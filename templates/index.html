@@ -1197,6 +1197,9 @@
           dom.fulltextContent.textContent = data.full_text || t('no-text');
           dom.timestampedContent.textContent = data.timestamped_text || t('no-timestamp');
 
+          // 文字起こし完了時に自動でダウンロードを実行
+          dom.downloadButton.click();
+
           // Show result area with animation
           setTimeout(() => {
             dom.resultArea.classList.add('visible');

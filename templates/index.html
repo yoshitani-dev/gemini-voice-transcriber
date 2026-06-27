@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音声文字起こし</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #F8FAFC;
+      color: #1E293B;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ===== Layout ===== */
+    #app-container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 24px 64px;
+    }
+
+    /* ===== Header ===== */
+    #app-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    #app-title {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #1E293B;
+      margin-bottom: 8px;
+    }
+
+    #app-subtitle {
+      font-size: 0.938rem;
+      color: #94A3B8;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    /* ===== Card ===== */
+    .card {
+      background: #FFFFFF;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 36px 32px;
+      margin-bottom: 24px;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+    }
+
+    .card-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #1E293B;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title-icon {
+      font-size: 1.25rem;
+    }
+
+    /* ===== Recording Card ===== */
+    #recording-card {
+      text-align: center;
+    }
+
+    #record-button {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #2563EB, #3B82F6);
+      color: #FFFFFF;
+      font-size: 2.25rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.35);
+      position: relative;
+      outline: none;
+    }
+
+    #record-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(37, 99, 235, 0.45);
+    }
+
+    #record-button:active {
+      transform: translateY(0);
+    }
+
+    #record-button.recording {
+      background: linear-gradient(135deg, #DC2626, #EF4444);
+      box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
+      animation: pulse-ring 1.5s ease-in-out infinite;
+    }
+
+    #record-button.recording:hover {
+      box-shadow: 0 8px 28px rgba(220, 38, 38, 0.5);
+    }
+
+    @keyframes pulse-ring {
+      0% {
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4), 0 0 0 0 rgba(220, 38, 38, 0.3);
+      }
+      50% {
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4), 0 0 0 16px rgba(220, 38, 38, 0);
+      }
+      100% {
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4), 0 0 0 0 rgba(220, 38, 38, 0);
+      }
+    }
+
+    #record-button-icon {
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    #recording-timer {
+      margin-top: 20px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #DC2626;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: 0.04em;
+    }
+
+    #recording-timer.visible {
+      display: flex;
+    }
+
+    #recording-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #DC2626;
+      animation: blink-dot 1s ease-in-out infinite;
+    }
+
+    @keyframes blink-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    #record-hint {
+      margin-top: 16px;
+      font-size: 0.875rem;
+      color: #94A3B8;
+    }
+
+    /* ===== Upload Card ===== */
+    #upload-card {
+      text-align: center;
+    }
+
+    #drop-zone {
+      border: 2px dashed #CBD5E1;
+      border-radius: 16px;
+      padding: 48px 24px;
+      cursor: pointer;
+      transition: border-color 0.25s ease, background-color 0.25s ease, transform 0.2s ease;
+      position: relative;
+    }
+
+    #drop-zone:hover {
+      border-color: #93C5FD;
+      background-color: #F0F7FF;
+    }
+
+    #drop-zone.drag-over {
+      border-color: #2563EB;
+      background-color: #EFF6FF;
+      transform: scale(1.01);
+      box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+
+    #drop-zone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    #drop-zone-text {
+      font-size: 1rem;
+      color: #64748B;
+      margin-bottom: 8px;
+    }
+
+    #drop-zone-link {
+      color: #2563EB;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.938rem;
+      transition: color 0.2s ease;
+    }
+
+    #drop-zone-link:hover {
+      color: #1D4ED8;
+      text-decoration: underline;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    #supported-formats {
+      margin-top: 16px;
+      font-size: 0.8rem;
+      color: #94A3B8;
+    }
+
+    #selected-file-info {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #F0F7FF;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      color: #2563EB;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    #selected-file-info.visible {
+      display: flex;
+    }
+
+    /* ===== Progress Area ===== */
+    #progress-area {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    #progress-area.visible {
+      display: block;
+      animation: slide-up-fade 0.5s ease forwards;
+    }
+
+    @keyframes slide-up-fade {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #progress-steps {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      position: relative;
+      padding: 0 8px;
+      margin-bottom: 28px;
+    }
+
+    #progress-line-bg {
+      position: absolute;
+      top: 22px;
+      left: 40px;
+      right: 40px;
+      height: 3px;
+      background: #E2E8F0;
+      border-radius: 2px;
+      z-index: 0;
+    }
+
+    #progress-line-fill {
+      position: absolute;
+      top: 22px;
+      left: 40px;
+      height: 3px;
+      background: linear-gradient(90deg, #2563EB, #3B82F6);
+      border-radius: 2px;
+      z-index: 1;
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+      flex: 1;
+    }
+
+    .step-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #F1F5F9;
+      border: 3px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.125rem;
+      transition: all 0.4s ease;
+      margin-bottom: 10px;
+    }
+
+    .progress-step.active .step-circle {
+      background: linear-gradient(135deg, #2563EB, #3B82F6);
+      border-color: #2563EB;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+      animation: step-glow 2s ease-in-out infinite;
+    }
+
+    @keyframes step-glow {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15); }
+      50% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.08); }
+    }
+
+    .progress-step.completed .step-circle {
+      background: #10B981;
+      border-color: #10B981;
+    }
+
+    .step-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #94A3B8;
+      text-align: center;
+      transition: color 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .progress-step.active .step-label {
+      color: #2563EB;
+      font-weight: 600;
+    }
+
+    .progress-step.completed .step-label {
+      color: #10B981;
+    }
+
+    #progress-message {
+      text-align: center;
+      font-size: 0.938rem;
+      color: #64748B;
+      padding: 16px;
+      background: #F8FAFC;
+      border-radius: 12px;
+      border: 1px solid #E2E8F0;
+    }
+
+    #progress-message-icon {
+      margin-right: 6px;
+    }
+
+    /* ===== Result Area ===== */
+    #result-area {
+      display: none;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    #result-area.visible {
+      display: block;
+      animation: slide-up-fade 0.6s ease forwards;
+    }
+
+    #result-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    #result-success-icon {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    #result-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 6px;
+    }
+
+    #result-pdf-name {
+      font-size: 0.875rem;
+      color: #64748B;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    #download-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      max-width: 360px;
+      margin: 24px auto;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #2563EB, #3B82F6);
+      color: #FFFFFF;
+      font-size: 1.063rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+      text-decoration: none;
+      font-family: inherit;
+    }
+
+    #download-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+    }
+
+    #download-button:active {
+      transform: translateY(0);
+    }
+
+    #result-download-wrapper {
+      text-align: center;
+    }
+
+    /* ===== Accordion ===== */
+    .accordion {
+      margin-top: 8px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .accordion-item {
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .accordion-item:hover {
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    }
+
+    .accordion-header {
+      width: 100%;
+      padding: 16px 20px;
+      background: #FAFBFC;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: inherit;
+      font-size: 0.938rem;
+      font-weight: 600;
+      color: #1E293B;
+      transition: background 0.2s ease;
+      outline: none;
+    }
+
+    .accordion-header:hover {
+      background: #F1F5F9;
+    }
+
+    .accordion-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .accordion-chevron {
+      transition: transform 0.3s ease;
+      font-size: 0.75rem;
+      color: #94A3B8;
+    }
+
+    .accordion-item.open .accordion-chevron {
+      transform: rotate(180deg);
+    }
+
+    .accordion-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease;
+    }
+
+    .accordion-item.open .accordion-body {
+      max-height: 600px;
+    }
+
+    .accordion-content {
+      padding: 20px;
+      font-size: 0.875rem;
+      line-height: 1.8;
+      color: #475569;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+      background: #FFFFFF;
+    }
+
+    .accordion-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .accordion-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .accordion-content::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 3px;
+    }
+
+    /* ===== Footer ===== */
+    #app-footer {
+      text-align: center;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #E2E8F0;
+    }
+
+    #footer-powered {
+      font-size: 0.8rem;
+      color: #94A3B8;
+    }
+
+    #footer-model {
+      font-size: 0.75rem;
+      color: #CBD5E1;
+      margin-top: 4px;
+    }
+
+    /* ===== Error Toast ===== */
+    #error-toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #FEF2F2;
+      color: #DC2626;
+      border: 1px solid #FECACA;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      opacity: 0;
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      pointer-events: none;
+      max-width: 90vw;
+    }
+
+    #error-toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 600px) {
+      #app-container {
+        padding: 32px 16px 48px;
+      }
+
+      #app-title {
+        font-size: 1.625rem;
+      }
+
+      .card {
+        padding: 28px 20px;
+      }
+
+      #record-button {
+        width: 80px;
+        height: 80px;
+        font-size: 1.875rem;
+      }
+
+      #drop-zone {
+        padding: 36px 16px;
+      }
+
+      .step-label {
+        font-size: 0.688rem;
+      }
+
+      .step-circle {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+      }
+
+      #progress-line-bg, #progress-line-fill {
+        top: 19px;
+        left: 32px;
+        right: 32px;
+      }
+    }
+
+    /* ===== Language Switcher ===== */
+    #lang-switcher {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+
+    .lang-btn {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 0.813rem;
+      font-weight: 500;
+      color: #94A3B8;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .lang-btn:hover {
+      color: #1E293B;
+      background-color: #F1F5F9;
+    }
+
+    .lang-btn.active {
+      color: #2563EB;
+      background-color: #EFF6FF;
+      font-weight: 700;
+    }
+
+    .lang-separator {
+      color: #E2E8F0;
+      font-size: 0.813rem;
+    }
+  </style>
+</head>
+<body>
+  <main id="app-container">
+    <!-- Language Selector -->
+    <div id="lang-switcher">
+      <button id="btn-lang-ja" class="lang-btn active" type="button">JP</button>
+      <span class="lang-separator">|</span>
+      <button id="btn-lang-en" class="lang-btn" type="button">EN</button>
+    </div>
+
+    <!-- Header -->
+    <header id="app-header">
+      <h1 id="app-title">🎙️ <span data-i18n="app-title">音声文字起こし</span></h1>
+      <p id="app-subtitle" data-i18n="app-subtitle">録音 → AI文字起こし → PDF自動生成</p>
+    </header>
+
+    <!-- Recording Card -->
+    <section id="recording-card" class="card" aria-label="リアルタイム録音">
+      <h2 class="card-title">
+        <span class="card-title-icon">🎤</span>
+        <span data-i18n="card-recording">リアルタイム録音</span>
+      </h2>
+      <button id="record-button" type="button" aria-label="録音ボタン">
+        <span id="record-button-icon">🎙️</span>
+      </button>
+      <div id="recording-timer">
+        <span id="recording-dot"></span>
+        <span id="recording-timer-label">REC</span>
+        <span id="recording-timer-value">00:00:00</span>
+      </div>
+      <p id="record-hint" data-i18n="record-hint-start">クリックして録音開始</p>
+    </section>
+
+    <!-- Upload Card -->
+    <section id="upload-card" class="card" aria-label="ファイルアップロード">
+      <h2 class="card-title">
+        <span class="card-title-icon">📂</span>
+        <span data-i18n="card-upload">ファイルアップロード</span>
+      </h2>
+      <div id="drop-zone" role="button" tabindex="0" aria-label="ファイルをドラッグ＆ドロップまたはクリック">
+        <span id="drop-zone-icon">📁</span>
+        <p id="drop-zone-text" data-i18n="drop-zone-text">ここにファイルをドラッグ</p>
+        <a id="drop-zone-link" role="button" tabindex="0" data-i18n="drop-zone-link">またはファイルを選択</a>
+      </div>
+      <input id="file-input" type="file" accept=".mp3,.m4a,.wav,.mp4,.webm" aria-hidden="true">
+      <p id="supported-formats" data-i18n="supported-formats">対応形式: MP3, M4A, WAV, MP4, WebM</p>
+      <div id="selected-file-info">
+        <span id="selected-file-icon">📎</span>
+        <span id="selected-file-name"></span>
+      </div>
+    </section>
+
+    <!-- Progress Area -->
+    <section id="progress-area" class="card" aria-label="処理進捗">
+      <h2 class="card-title">
+        <span class="card-title-icon">⚙️</span>
+        <span data-i18n="card-processing">処理中...</span>
+      </h2>
+      <div id="progress-steps">
+        <div id="progress-line-bg"></div>
+        <div id="progress-line-fill"></div>
+        <div id="step-0" class="progress-step" data-step="0">
+          <div class="step-circle"><span class="step-icon">📤</span></div>
+          <span class="step-label" data-i18n="step-upload">アップロード</span>
+        </div>
+        <div id="step-1" class="progress-step" data-step="1">
+          <div class="step-circle"><span class="step-icon">🔄</span></div>
+          <span class="step-label" data-i18n="step-compress">圧縮</span>
+        </div>
+        <div id="step-2" class="progress-step" data-step="2">
+          <div class="step-circle"><span class="step-icon">🤖</span></div>
+          <span class="step-label" data-i18n="step-transcribe">AI文字起こし</span>
+        </div>
+        <div id="step-3" class="progress-step" data-step="3">
+          <div class="step-circle"><span class="step-icon">📄</span></div>
+          <span class="step-label" data-i18n="step-pdf">PDF生成</span>
+        </div>
+      </div>
+      <div id="progress-message">
+        <span id="progress-message-icon">⏳</span>
+        <span id="progress-message-text" data-i18n="progress-start">処理を開始しています...</span>
+      </div>
+    </section>
+
+    <!-- Result Area -->
+    <section id="result-area" class="card" aria-label="文字起こし結果">
+      <div id="result-header">
+        <span id="result-success-icon">✅</span>
+        <h2 id="result-title" data-i18n="result-title">文字起こし完了！</h2>
+        <p id="result-pdf-name">
+          <span>📄</span>
+          <span id="result-pdf-filename"></span>
+        </p>
+      </div>
+      <div id="result-download-wrapper">
+        <a id="download-button" href="#" download>
+          <span>⬇️</span>
+          <span data-i18n="download-btn">PDFをダウンロード</span>
+        </a>
+      </div>
+      <div class="accordion">
+        <div id="accordion-fulltext" class="accordion-item">
+          <button id="accordion-fulltext-header" class="accordion-header" type="button" aria-expanded="false">
+            <span class="accordion-header-left">
+              <span>📝</span>
+              <span data-i18n="fulltext-header">全文テキスト</span>
+            </span>
+            <span class="accordion-chevron">▼</span>
+          </button>
+          <div class="accordion-body">
+            <div id="accordion-fulltext-content" class="accordion-content"></div>
+          </div>
+        </div>
+        <div id="accordion-timestamped" class="accordion-item">
+          <button id="accordion-timestamped-header" class="accordion-header" type="button" aria-expanded="false">
+            <span class="accordion-header-left">
+              <span>⏱️</span>
+              <span data-i18n="timestamped-header">タイムスタンプ付き</span>
+            </span>
+            <span class="accordion-chevron">▼</span>
+          </button>
+          <div class="accordion-body">
+            <div id="accordion-timestamped-content" class="accordion-content"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="app-footer">
+      <p id="footer-powered">Powered by Gemini API</p>
+      <p id="footer-model">gemini-3.5-flash</p>
+    </footer>
+  </main>
+
+  <!-- Error Toast -->
+  <div id="error-toast" role="alert" aria-live="assertive"></div>
+
+  <script>
+    /* ===== State ===== */
+    const state = {
+      isRecording: false,
+      isProcessing: false,
+      recordingSeconds: 0,
+      recordingTimerInterval: null,
+      pollingInterval: null,
+    };
+
+    /* ===== Translation System ===== */
+    const translations = {
+      ja: {
+        'app-title': '音声文字起こし',
+        'app-subtitle': '録音 → AI文字起こし → PDF自動生成',
+        'card-recording': 'リアルタイム録音',
+        'record-hint-start': 'クリックして録音開始',
+        'record-hint-stop': 'クリックして録音停止',
+        'card-upload': 'ファイルアップロード',
+        'drop-zone-text': 'ここにファイルをドラッグ',
+        'drop-zone-link': 'またはファイルを選択',
+        'supported-formats': '対応形式: MP3, M4A, WAV, MP4, WebM',
+        'card-processing': '処理中...',
+        'step-upload': 'アップロード',
+        'step-compress': '圧縮',
+        'step-transcribe': 'AI文字起こし',
+        'step-pdf': 'PDF生成',
+        'progress-start': '処理を開始しています...',
+        'result-title': '文字起こし完了！',
+        'download-btn': 'PDFをダウンロード',
+        'fulltext-header': '全文テキスト',
+        'timestamped-header': 'タイムスタンプ付き',
+        'no-text': '（テキストなし）',
+        'no-timestamp': '（タイムスタンプ情報なし）',
+        'error-unsupported-format': '対応していないファイル形式です。MP3, M4A, WAV, MP4, WebM のみ対応しています。',
+        'error-upload-failed': 'ファイルのアップロードに失敗しました: ',
+        'error-fetch-failed': '結果の取得に失敗しました: ',
+        'error-cannot-connect': 'サーバーに接続できません',
+        'error-already-processing': '既に処理中です',
+        'step-msg-0': '音声ファイルをアップロード中...',
+        'step-msg-1': '音声ファイルを圧縮中...',
+        'step-msg-2': 'AIによる文字起こしを実行中...',
+        'step-msg-3': '文字起こし結果のPDFを生成中...',
+        'error-recording-start': '録音の開始に失敗しました: ',
+        'error-recording-stop': '録音の停止に失敗しました: ',
+      },
+      en: {
+        'app-title': 'Audio Transcription',
+        'app-subtitle': 'Record/Upload → AI Transcription → PDF Generation',
+        'card-recording': 'Real-time Recording',
+        'record-hint-start': 'Click to start recording',
+        'record-hint-stop': 'Click to stop recording',
+        'card-upload': 'File Upload',
+        'drop-zone-text': 'Drag files here',
+        'drop-zone-link': 'or select a file',
+        'supported-formats': 'Supported formats: MP3, M4A, WAV, MP4, WebM',
+        'card-processing': 'Processing...',
+        'step-upload': 'Upload',
+        'step-compress': 'Compress',
+        'step-transcribe': 'Transcription',
+        'step-pdf': 'PDF Gen',
+        'progress-start': 'Initializing process...',
+        'result-title': 'Transcription Completed!',
+        'download-btn': 'Download PDF',
+        'fulltext-header': 'Full Text',
+        'timestamped-header': 'With Timestamps',
+        'no-text': '(No text)',
+        'no-timestamp': '(No timestamp info)',
+        'error-unsupported-format': 'Unsupported file format. Only MP3, M4A, WAV, MP4, and WebM are supported.',
+        'error-upload-failed': 'Failed to upload file: ',
+        'error-fetch-failed': 'Failed to fetch result: ',
+        'error-cannot-connect': 'Cannot connect to server',
+        'error-already-processing': 'Already processing',
+        'step-msg-0': 'Uploading audio file...',
+        'step-msg-1': 'Compressing audio file...',
+        'step-msg-2': 'Transcribing with AI...',
+        'step-msg-3': 'Generating PDF document...',
+        'error-recording-start': 'Failed to start recording: ',
+        'error-recording-stop': 'Failed to stop recording: ',
+      }
+    };
+
+    let currentLang = 'ja';
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      
+      // Update UI active buttons
+      document.getElementById('btn-lang-ja').classList.toggle('active', lang === 'ja');
+      document.getElementById('btn-lang-en').classList.toggle('active', lang === 'en');
+      
+      // Translate elements with [data-i18n]
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+          el.textContent = translations[lang][key];
+        }
+      });
+      
+      // Update dynamic elements
+      updateDynamicLabels();
+    }
+
+    function t(key) {
+      return (translations[currentLang] && translations[currentLang][key]) || key;
+    }
+
+    function updateDynamicLabels() {
+      if (state.isRecording) {
+        dom.recordHint.textContent = t('record-hint-stop');
+        dom.recordHint.setAttribute('data-i18n', 'record-hint-stop');
+      } else {
+        dom.recordHint.textContent = t('record-hint-start');
+        dom.recordHint.setAttribute('data-i18n', 'record-hint-start');
+      }
+    }
+
+    /* ===== DOM References ===== */
+    const dom = {
+      recordButton: document.getElementById('record-button'),
+      recordButtonIcon: document.getElementById('record-button-icon'),
+      recordingTimer: document.getElementById('recording-timer'),
+      recordingTimerValue: document.getElementById('recording-timer-value'),
+      recordHint: document.getElementById('record-hint'),
+      dropZone: document.getElementById('drop-zone'),
+      dropZoneLink: document.getElementById('drop-zone-link'),
+      fileInput: document.getElementById('file-input'),
+      selectedFileInfo: document.getElementById('selected-file-info'),
+      selectedFileName: document.getElementById('selected-file-name'),
+      progressArea: document.getElementById('progress-area'),
+      progressLineFill: document.getElementById('progress-line-fill'),
+      progressMessage: document.getElementById('progress-message-text'),
+      steps: [
+        document.getElementById('step-0'),
+        document.getElementById('step-1'),
+        document.getElementById('step-2'),
+        document.getElementById('step-3'),
+      ],
+      resultArea: document.getElementById('result-area'),
+      resultPdfFilename: document.getElementById('result-pdf-filename'),
+      downloadButton: document.getElementById('download-button'),
+      fulltextContent: document.getElementById('accordion-fulltext-content'),
+      timestampedContent: document.getElementById('accordion-timestamped-content'),
+      errorToast: document.getElementById('error-toast'),
+    };
+
+    /* ===== Utility Functions ===== */
+    function formatTime(totalSeconds) {
+      const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const s = String(totalSeconds % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function showError(message) {
+      dom.errorToast.textContent = '⚠️ ' + message;
+      dom.errorToast.classList.add('visible');
+      setTimeout(() => {
+        dom.errorToast.classList.remove('visible');
+      }, 4000);
+    }
+
+    async function apiCall(url, options = {}) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || `HTTP ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        if (error.name === 'TypeError') {
+          throw new Error(t('error-cannot-connect'));
+        }
+        throw error;
+      }
+    }
+
+    /* ===== Recording ===== */
+    dom.recordButton.addEventListener('click', async () => {
+      if (state.isProcessing) return;
+
+      if (!state.isRecording) {
+        // Start recording
+        try {
+          await apiCall('/api/recording/start', { method: 'POST' });
+          state.isRecording = true;
+          state.recordingSeconds = 0;
+          dom.recordButton.classList.add('recording');
+          dom.recordButtonIcon.textContent = '⏹️';
+          dom.recordingTimer.classList.add('visible');
+          dom.recordHint.textContent = t('record-hint-stop');
+          dom.recordHint.setAttribute('data-i18n', 'record-hint-stop');
+          dom.recordingTimerValue.textContent = formatTime(0);
+
+          // Hide result area if visible
+          dom.resultArea.classList.remove('visible');
+
+          state.recordingTimerInterval = setInterval(() => {
+            state.recordingSeconds++;
+            dom.recordingTimerValue.textContent = formatTime(state.recordingSeconds);
+          }, 1000);
+        } catch (err) {
+          showError(t('error-recording-start') + err.message);
+        }
+      } else {
+        // Stop recording
+        try {
+          clearInterval(state.recordingTimerInterval);
+          state.isRecording = false;
+          dom.recordButton.classList.remove('recording');
+          dom.recordButtonIcon.textContent = '🎙️';
+          dom.recordingTimer.classList.remove('visible');
+          dom.recordHint.textContent = t('record-hint-start');
+          dom.recordHint.setAttribute('data-i18n', 'record-hint-start');
+
+          await apiCall('/api/recording/stop', { method: 'POST' });
+          startProcessingUI();
+        } catch (err) {
+          showError(t('error-recording-stop') + err.message);
+        }
+      }
+    });
+
+    /* ===== File Upload ===== */
+    // Click to select
+    dom.dropZone.addEventListener('click', () => {
+      dom.fileInput.click();
+    });
+
+    dom.dropZoneLink.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dom.fileInput.click();
+    });
+
+    dom.dropZone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        dom.fileInput.click();
+      }
+    });
+
+    // Drag & drop
+    dom.dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dom.dropZone.classList.add('drag-over');
+    });
+
+    dom.dropZone.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dom.dropZone.classList.remove('drag-over');
+    });
+
+    dom.dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dom.dropZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    });
+
+    dom.fileInput.addEventListener('change', () => {
+      if (dom.fileInput.files.length > 0) {
+        handleFileUpload(dom.fileInput.files[0]);
+      }
+    });
+
+    async function handleFileUpload(file) {
+      if (state.isProcessing || state.isRecording) return;
+
+      const allowedExtensions = ['mp3', 'm4a', 'wav', 'mp4', 'webm'];
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!allowedExtensions.includes(ext)) {
+        showError(t('error-unsupported-format'));
+        return;
+      }
+
+      // Show selected file
+      dom.selectedFileName.textContent = file.name;
+      dom.selectedFileInfo.classList.add('visible');
+
+      // Hide result area
+      dom.resultArea.classList.remove('visible');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        startProcessingUI();
+        await apiCall('/api/transcribe', {
+          method: 'POST',
+          body: formData,
+        });
+      } catch (err) {
+        showError(t('error-upload-failed') + err.message);
+        stopProcessingUI();
+      }
+    }
+
+    /* ===== Progress Polling ===== */
+    function startProcessingUI() {
+      state.isProcessing = true;
+      dom.progressArea.classList.add('visible');
+      dom.resultArea.classList.remove('visible');
+      updateProgressSteps(0);
+
+      // Start polling
+      state.pollingInterval = setInterval(pollStatus, 1000);
+    }
+
+    function stopProcessingUI() {
+      state.isProcessing = false;
+      clearInterval(state.pollingInterval);
+    }
+
+    async function pollStatus() {
+      try {
+        const data = await apiCall('/api/status');
+
+        if (data.status === 'recording') {
+          // Update recording timer from server
+          if (typeof data.recording_seconds === 'number') {
+            state.recordingSeconds = data.recording_seconds;
+            dom.recordingTimerValue.textContent = formatTime(data.recording_seconds);
+          }
+        } else if (data.status === 'processing') {
+          const step = typeof data.step === 'number' ? data.step : 0;
+          updateProgressSteps(step);
+          dom.progressMessage.textContent = t(`step-msg-${step}`);
+        } else if (data.status === 'idle') {
+          stopProcessingUI();
+
+          // エラーが発生していた場合はエラーを表示して終了
+          if (data.error) {
+            dom.progressArea.classList.remove('visible');
+            showError(data.error);
+            return;
+          }
+
+          // 正常完了
+          await fetchResult();
+        }
+      } catch (err) {
+        // Silently retry on polling errors
+      }
+    }
+
+    function updateProgressSteps(currentStep) {
+      const linePercentages = [0, 33, 66, 100];
+      dom.progressLineFill.style.width = linePercentages[Math.min(currentStep, 3)] + '%';
+
+      dom.steps.forEach((stepEl, index) => {
+        stepEl.classList.remove('active', 'completed');
+        const iconEl = stepEl.querySelector('.step-icon');
+        const icons = ['📤', '🔄', '🤖', '📄'];
+
+        if (index < currentStep) {
+          stepEl.classList.add('completed');
+          iconEl.textContent = '✓';
+        } else if (index === currentStep) {
+          stepEl.classList.add('active');
+          iconEl.textContent = icons[index];
+        } else {
+          iconEl.textContent = icons[index];
+        }
+      });
+    }
+
+    async function fetchResult() {
+      try {
+        const data = await apiCall('/api/result');
+
+        if (data.success) {
+          // Hide progress, show result
+          dom.progressArea.classList.remove('visible');
+          dom.selectedFileInfo.classList.remove('visible');
+
+          dom.resultPdfFilename.textContent = data.pdf_filename || 'output.pdf';
+          dom.downloadButton.href = '/api/download/' + encodeURIComponent(data.pdf_filename || 'output.pdf');
+          dom.fulltextContent.textContent = data.full_text || t('no-text');
+          dom.timestampedContent.textContent = data.timestamped_text || t('no-timestamp');
+
+          // Show result area with animation
+          setTimeout(() => {
+            dom.resultArea.classList.add('visible');
+          }, 200);
+        }
+      } catch (err) {
+        showError(t('error-fetch-failed') + err.message);
+      }
+    }
+
+    /* ===== Accordion ===== */
+    document.querySelectorAll('.accordion-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const item = header.closest('.accordion-item');
+        const isOpen = item.classList.contains('open');
+
+        // Toggle
+        item.classList.toggle('open');
+        header.setAttribute('aria-expanded', !isOpen);
+      });
+    });
+
+    /* ===== Language Buttons ===== */
+    document.getElementById('btn-lang-ja').addEventListener('click', () => setLanguage('ja'));
+    document.getElementById('btn-lang-en').addEventListener('click', () => setLanguage('en'));
+
+    /* ===== Initial Status Check ===== */
+    (async function initCheck() {
+      // Set initial language based on browser setting
+      const userLang = (navigator.language || navigator.userLanguage).startsWith('ja') ? 'ja' : 'en';
+      setLanguage(userLang);
+
+      try {
+        const data = await apiCall('/api/status');
+        if (data.status === 'recording') {
+          state.isRecording = true;
+          state.recordingSeconds = data.recording_seconds || 0;
+          dom.recordButton.classList.add('recording');
+          dom.recordButtonIcon.textContent = '⏹️';
+          dom.recordingTimer.classList.add('visible');
+          dom.recordHint.textContent = t('record-hint-stop');
+          dom.recordHint.setAttribute('data-i18n', 'record-hint-stop');
+          dom.recordingTimerValue.textContent = formatTime(state.recordingSeconds);
+
+          state.recordingTimerInterval = setInterval(() => {
+            state.recordingSeconds++;
+            dom.recordingTimerValue.textContent = formatTime(state.recordingSeconds);
+          }, 1000);
+
+          // Start polling for status
+          state.pollingInterval = setInterval(pollStatus, 1000);
+        } else if (data.status === 'processing') {
+          startProcessingUI();
+          if (typeof data.step === 'number') {
+            updateProgressSteps(data.step);
+          }
+          dom.progressMessage.textContent = t(`step-msg-${data.step || 0}`);
+        }
+      } catch (err) {
+        // Server not available yet – that's fine
+      }
+    })();
+  </script>
+</body>
+</html>

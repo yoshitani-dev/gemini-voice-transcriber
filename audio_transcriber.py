@@ -1,0 +1,871 @@
+r"""
+==========================================================
+  Gemini Voice Transcriber (PC Audio Recording & Transcription)
+==========================================================
+
+使い方:
+  python audio_transcriber.py                    # PC音声を録音
+  python audio_transcriber.py "音声ファイル.mp3"  # 既存ファイルを文字起こし
+
+==========================================================
+"""
+
+import os
+import sys
+import wave
+import struct
+import threading
+import datetime
+import time
+import argparse
+
+
+# ============================================================
+# 設定
+# ============================================================
+
+# Gemini APIキー（環境変数 GEMINI_API_KEY が優先されます）
+API_KEY = ""
+
+# Geminiモデル
+GEMINI_MODEL = "gemini-3.5-flash"
+
+# 録音設定（デバイスのデフォルトで録音し、保存時に変換する）
+SAMPLE_RATE = 44100
+CHANNELS = 2
+CHUNK = 1024
+FORMAT_BITS = 16
+SAVE_RATE = 16000     # 保存時の目標サンプルレート（音声認識の標準品質）
+
+# 出力先ディレクトリ
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+
+# PDF設定
+PDF_FONT_SIZE = 11
+PDF_LINE_HEIGHT = 7
+
+
+# ============================================================
+# 日本語フォントの自動検出
+# ============================================================
+
+def find_japanese_font():
+    """Windowsにインストールされている日本語フォントを探す"""
+    font_candidates = [
+        os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "YuGothR.ttc"),
+        os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "YuGothM.ttc"),
+        os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "meiryo.ttc"),
+        os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "msgothic.ttc"),
+        os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "msmincho.ttc"),
+    ]
+    for font_path in font_candidates:
+        if os.path.exists(font_path):
+            return font_path
+    return None
+
+
+# ============================================================
+# 録音クラス
+# ============================================================
+
+class AudioRecorder:
+    """WASAPIループバックでPCのシステム音声を録音する"""
+
+    def __init__(self):
+        self.frames = []
+        self.is_recording = False
+        self.record_thread = None
+        self.pa = None
+        self.stream = None
+        self.sample_width = FORMAT_BITS // 8
+        self.actual_rate = SAMPLE_RATE
+        self.actual_channels = CHANNELS
+
+    def _find_loopback_device(self):
+        import pyaudiowpatch as pyaudio
+        self.pa = pyaudio.PyAudio()
+
+        try:
+            wasapi_info = self.pa.get_host_api_info_by_type(pyaudio.paWASAPI)
+        except OSError:
+            print("エラー: WASAPIが利用できません。Windows 10/11を確認してください。")
+            sys.exit(1)
+
+        default_output_index = wasapi_info["defaultOutputDevice"]
+        default_speakers = self.pa.get_device_info_by_index(default_output_index)
+
+        if not default_speakers.get("isLoopbackDevice", False):
+            for i in range(self.pa.get_device_count()):
+                device = self.pa.get_device_info_by_index(i)
+                if (device.get("isLoopbackDevice", False) and
+                        device.get("name", "").startswith(default_speakers["name"][:30])):
+                    return device
+            try:
+                return self.pa.get_wasapi_loopback_analogue_by_dict(default_speakers)
+            except Exception:
+                pass
+            print("エラー: ループバックデバイスが見つかりません。")
+            print(f"  デフォルトスピーカー: {default_speakers['name']}")
+            sys.exit(1)
+
+        return default_speakers
+
+    def _record_worker(self, loopback_device):
+        import pyaudiowpatch as pyaudio
+        try:
+            # WASAPIループバックはデバイスのネイティブ設定でしか開けない
+            device_rate = int(loopback_device.get("defaultSampleRate", SAMPLE_RATE))
+            device_channels = int(loopback_device.get("maxInputChannels", CHANNELS))
+            self.actual_rate = device_rate
+            self.actual_channels = device_channels
+
+            self.stream = self.pa.open(
+                format=pyaudio.paInt16,
+                channels=device_channels,
+                rate=device_rate,
+                input=True,
+                input_device_index=loopback_device["index"],
+                frames_per_buffer=CHUNK,
+            )
+
+            while self.is_recording:
+                try:
+                    data = self.stream.read(CHUNK, exception_on_overflow=False)
+                    self.frames.append(data)
+                except OSError:
+                    break
+        except Exception as e:
+            print(f"録音エラー: {e}")
+            self.is_recording = False
+        finally:
+            if self.stream:
+                try:
+                    self.stream.stop_stream()
+                    self.stream.close()
+                except Exception:
+                    pass
+
+    def start_recording(self):
+        self.frames = []
+        self.is_recording = True
+        loopback_device = self._find_loopback_device()
+        print(f"録音デバイス: {loopback_device['name']}")
+        self.record_thread = threading.Thread(
+            target=self._record_worker, args=(loopback_device,), daemon=True
+        )
+        self.record_thread.start()
+
+    def stop_recording(self):
+        self.is_recording = False
+        if self.record_thread:
+            self.record_thread.join(timeout=3)
+
+    def save_wav(self, filepath):
+        """録音データを8000Hzモノラルに変換して保存（ファイルサイズを最小化）"""
+        if not self.frames:
+            print("録音データがありません。")
+            return False
+
+        raw_data = b"".join(self.frames)
+        duration_sec = len(raw_data) / (self.actual_rate * self.actual_channels * self.sample_width)
+
+        # ステレオ→モノラル変換
+        total_samples = len(raw_data) // self.sample_width
+        samples = list(struct.unpack(f"<{total_samples}h", raw_data))
+
+        if self.actual_channels == 2:
+            mono = [(samples[i] + samples[i + 1]) // 2
+                    for i in range(0, len(samples), 2)]
+        else:
+            mono = samples
+
+        # ダウンサンプリング（デバイスのレート → SAVE_RATE）
+        target_rate = SAVE_RATE
+        if self.actual_rate != target_rate:
+            ratio = self.actual_rate / target_rate
+            downsampled = [mono[int(i * ratio)]
+                           for i in range(int(len(mono) / ratio))]
+        else:
+            downsampled = mono
+
+        # 書き出し
+        with wave.open(filepath, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(self.sample_width)
+            wf.setframerate(target_rate)
+            wf.writeframes(struct.pack(f"<{len(downsampled)}h", *downsampled))
+
+        file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
+        print(f"録音保存: {filepath}")
+        print(f"  サイズ: {file_size_mb:.1f} MB / 長さ: {duration_sec:.1f} 秒")
+        print(f"  (録音: {self.actual_rate}Hz {self.actual_channels}ch → 保存: {target_rate}Hz モノラル)")
+        return True
+
+    def cleanup(self):
+        if self.pa:
+            try:
+                self.pa.terminate()
+            except Exception:
+                pass
+
+
+# ============================================================
+# 音声ファイル圧縮（100MB制限対応）
+# ============================================================
+
+MAX_UPLOAD_MB = 95  # 余裕を持って95MBを上限とする
+
+def convert_wav_to_smaller(input_path, output_path, target_rate=16000):
+    """
+    WAVファイルをモノラル・指定サンプルレートに変換する。
+    """
+    with wave.open(input_path, "rb") as wf:
+        n_channels = wf.getnchannels()
+        sampwidth = wf.getsampwidth()
+        framerate = wf.getframerate()
+        n_frames = wf.getnframes()
+        raw = wf.readframes(n_frames)
+
+    # 16bit前提でサンプルを取り出す
+    total_samples = n_frames * n_channels
+    samples = list(struct.unpack(f"<{total_samples}h", raw))
+
+    # ステレオ→モノラル変換（左右チャンネルの平均）
+    if n_channels == 2:
+        mono = [(samples[i] + samples[i + 1]) // 2
+                for i in range(0, len(samples), 2)]
+    else:
+        mono = samples
+
+    # ダウンサンプリング（間引き法）
+    if framerate != target_rate:
+        ratio = framerate / target_rate
+        downsampled = [mono[int(i * ratio)]
+                       for i in range(int(len(mono) / ratio))]
+    else:
+        downsampled = mono
+
+    # 書き出し
+    with wave.open(output_path, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(target_rate)
+        wf.writeframes(struct.pack(f"<{len(downsampled)}h", *downsampled))
+
+
+def compress_audio_for_upload(audio_filepath):
+    """
+    音声ファイルが大きすぎる場合、Geminiのアップロード時間短縮のためにWAVのみ圧縮する。
+    MP3/M4A/MP4などのフォーマットはすでに圧縮されており、WAVに変換するとかえって巨大化するため
+    そのままアップロードする（Geminiは2GBまで対応）。
+    戻り値: (アップロード用ファイルパス, 一時ファイルかどうか)
+    """
+    file_size_mb = os.path.getsize(audio_filepath) / (1024 * 1024)
+    _, ext = os.path.splitext(audio_filepath)
+
+    # --- WAVファイル以外（MP3, M4A, 等）はそのまま返す ---
+    if ext.lower() != ".wav":
+        if file_size_mb > 95:
+            print(f"  ファイルサイズ: {file_size_mb:.1f} MB (圧縮済みフォーマットのためそのままアップロードします)")
+        else:
+            print(f"  ファイルサイズ: {file_size_mb:.1f} MB")
+        return audio_filepath, False
+
+    # --- WAVファイルの場合 ---
+    if file_size_mb < 50:
+        print(f"  ファイルサイズ: {file_size_mb:.1f} MB (WAV変換不要)")
+        return audio_filepath, False
+
+    # 巨大なWAVファイルの場合はサンプルレートを下げて圧縮
+    print(f"  WAVファイルサイズが {file_size_mb:.1f} MB のため圧縮します...")
+    tmp_path = audio_filepath.replace(".wav", "_upload.wav")
+
+    # 極端に大きい場合は8000Hz、それ以外は16000Hz
+    target_rate = 8000 if file_size_mb > 300 else 16000
+
+    print(f"  {target_rate}Hz モノラルに変換中...")
+    try:
+        convert_wav_to_smaller(audio_filepath, tmp_path, target_rate=target_rate)
+        result_mb = os.path.getsize(tmp_path) / (1024 * 1024)
+        print(f"  変換完了！ {file_size_mb:.1f} MB → {result_mb:.1f} MB")
+        return tmp_path, True
+    except Exception as e:
+        print(f"  ⚠ WAV圧縮中にエラーが発生しました: {e}")
+        print("  元のファイルのままアップロードを試みます。")
+        return audio_filepath, False
+
+
+# ============================================================
+# フィラー（つなぎ言葉）除去
+# ============================================================
+
+import re
+
+# 除去対象のフィラーパターン（単独で出現する場合のみ除去）
+_FILLER_WORDS = [
+    "えーっと", "えーと", "ええと", "えっと",
+    "あのー", "あの", "あのね",
+    "うーん", "うーんと", "うん",
+    "まあね", "まあ", "ま",
+    "なんか", "なんだろう",
+    "えー", "あー", "うー",
+    "そのー", "その",
+    "ほら", "ほらね",
+    "ねー", "さー", "ね",
+    "お", "え", "おー", "ええ",
+]
+
+def remove_fillers(text):
+    """文字起こしテキストからフィラー（つなぎ言葉）を除去する"""
+    if not text:
+        return text
+
+    # フィラーを長い順にソート（「えーっと」が「えー」より先にマッチするように）
+    fillers_sorted = sorted(_FILLER_WORDS, key=len, reverse=True)
+    filler_pattern = "|".join(re.escape(f) for f in fillers_sorted)
+
+    lines = text.split("\n")
+    cleaned_lines = []
+
+    for line in lines:
+        # 句読点を挟んだ同じ単語（1文字〜6文字）の3回以上の繰り返しを検出し、1回にまとめる。
+        repeat_pattern = r"(\w{1,6})([、。，\.\s\?？\!！]+)\1(?:\2\1)+"
+        prev_line = ""
+        while prev_line != line:
+            prev_line = line
+            line = re.sub(repeat_pattern, r"\1\2", line)
+            
+        # 句読点のない単純な文字の繰り返し（例：「テストテストテスト」）の対策（3回以上繰り返し）
+        pattern_no_punc = r"(\w{2,4})\1{2,}"
+        line = re.sub(pattern_no_punc, r"\1", line)
+
+        # 連続した短いフィラー（「お。お。お。」など）の削除
+        line = re.sub(
+            rf"(?:(?:{filler_pattern})[、,，。．.]\s*){{2,}}",
+            "", line
+        )
+        
+        # 文頭のフィラー + 句読点パターンを除去（例: 「えー、今日は」→「今日は」）
+        line = re.sub(
+            rf"^(?:{filler_pattern})(?:[、,，。．.]\s*)+",
+            "", line
+        )
+        # 文中の「、フィラー、」パターンを「、」に置換
+        line = re.sub(
+            rf"(?<=[、,，。．.])\s*(?:{filler_pattern})\s*(?=[、,，。．.])",
+            "", line
+        )
+        # 句読点の後のフィラー + 句読点（例: 「です。えー、次に」→「です。次に」）
+        line = re.sub(
+            rf"([。．.])\s*(?:{filler_pattern})\s*(?:[、,，。．.]\s*)*",
+            r"\1", line
+        )
+        # 独立した残ったフィラーを消す
+        line = re.sub(
+            rf"^(?:{filler_pattern})$",
+            "", line
+        )
+        
+        # 連続した句読点の整理
+        line = re.sub(r"[、,，]{2,}", "、", line)
+        line = re.sub(r"[。．.]{2,}", "。", line)
+        
+        # ゴミとして残った不要な句読点を整理
+        line = re.sub(r"^[、,，。．.]+\s*", "", line)
+
+        # 空の行にならない場合だけ追加
+        if line.strip():
+            cleaned_lines.append(line)
+
+    result = "\n".join(cleaned_lines)
+    # 空行が連続しすぎないように
+    result = re.sub(r"\n{3,}", "\n\n", result)
+    return result.strip()
+
+
+# ============================================================
+# Gemini 文字起こし
+# ============================================================
+
+def transcribe_with_gemini(audio_filepath, api_key, language=None):
+    """Gemini APIで音声ファイルを文字起こしする"""
+    from google import genai
+
+    print(f"\nGemini APIに接続中... (モデル: {GEMINI_MODEL})")
+    client = genai.Client(api_key=api_key)
+
+    # ファイルアップロード
+    import mimetypes
+    _, ext = os.path.splitext(audio_filepath)
+
+    # 100MB制限対応: 必要に応じて圧縮
+    file_size_mb = os.path.getsize(audio_filepath) / (1024 * 1024)
+    print(f"\n元ファイル: {file_size_mb:.1f} MB")
+    upload_path, converted_tmp = compress_audio_for_upload(audio_filepath)
+    converted_tmp = upload_path if converted_tmp else None
+
+    file_size_mb = os.path.getsize(upload_path) / (1024 * 1024)
+    print(f"音声ファイルをアップロード中... ({file_size_mb:.1f} MB)")
+
+    # MIMEタイプを判定
+    upload_ext = os.path.splitext(upload_path)[1]
+    mime_type, _ = mimetypes.guess_type(upload_path)
+    if not mime_type:
+        mime_type = "audio/mp4" if upload_ext.lower() == ".m4a" else "audio/wav"
+
+    safe_filename = f"audio{upload_ext}"
+    with open(upload_path, "rb") as f:
+        audio_file = client.files.upload(
+            file=f,
+            config={"display_name": safe_filename, "mime_type": mime_type},
+        )
+    print(f"  アップロード完了: {audio_file.name}")
+
+    # 処理完了を待機
+    print("ファイル処理を待機中...")
+    wait_count = 0
+    max_wait = 900  # 900回 * 2秒 = 1800秒 (30分)
+    while audio_file.state.name == "PROCESSING":
+        time.sleep(2)
+        wait_count += 1
+        if wait_count > max_wait:
+            print("ファイルの処理待ちがタイムアウトしました（30分経過）。処理を中止します。")
+            try:
+                client.files.delete(name=audio_file.name)
+            except Exception:
+                pass
+            return None, None
+        audio_file = client.files.get(name=audio_file.name)
+
+    if audio_file.state.name == "FAILED":
+        print("ファイルの処理に失敗しました。")
+        return None, None
+
+    # プロンプト作成
+    lang_instruction = ""
+    if language == "ja":
+        lang_instruction = "音声は日本語です。日本語で文字起こししてください。"
+    elif language == "en":
+        lang_instruction = "The audio is in English. Please transcribe in English."
+    elif language:
+        lang_instruction = f"Please transcribe in language code: {language}."
+
+    prompt = f"""以下の音声を文字起こししてください。
+
+【指示】
+{lang_instruction if lang_instruction else "日本語の音声は日本語で、英語は英語で文字起こししてください。"}
+- 句読点や改行を適切に入れて、読みやすい形式にしてください。
+- 複数の話者がいる場合は可能な限り区別してください（例: 話者A、話者B）。
+- 聞き取れない部分は [聞き取り不可] と記載してください。
+- 出力は文字起こしの全文テキストのみとしてください。余計な説明やコメントは不要です。
+
+【重要】フィラー（つなぎ言葉）の除去:
+以下のような意味のないつなぎ言葉・フィラーは全て削除し、絶対に出力に含めないでください:
+「えー」「あのー」「あの」「まあ」「その」「なんか」「ええと」「うーん」「うん」「えっと」「まあね」
+「とか」「ほら」「ねー」「ね」「さー」「ま」「あー」「うー」「え」「お」
+文頭・文末・文中のどこにあっても削除してください。
+"""
+
+    # 文字起こし実行
+    print("Geminiで文字起こし中...")
+    start_time = time.time()
+
+    # 混雑時にモデルを切り替えて再試行するロジック
+    models_to_try = [GEMINI_MODEL]
+    if GEMINI_MODEL != "gemini-2.5-flash":
+        models_to_try.append("gemini-2.5-flash")
+    if "gemini-2.0-flash" not in models_to_try:
+        models_to_try.append("gemini-2.0-flash")
+
+    response = None
+    last_error = None
+    # thinking モデル用の設定（thinking_budget=0 で思考モードをOFFにし response.text が空になるのを防ぐ）
+    from google.genai import types as genai_types
+    gen_config = genai_types.GenerateContentConfig(
+        thinking_config=genai_types.ThinkingConfig(thinking_budget=0)
+    )
+
+    for model in models_to_try:
+        try:
+            print(f"文字起こし試行中... (モデル: {model})")
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=[prompt, audio_file],
+                    config=gen_config,
+                )
+            except Exception:
+                # thinking_config に対応していない古いモデルはconfigなしで再試行
+                response = client.models.generate_content(
+                    model=model,
+                    contents=[prompt, audio_file],
+                )
+            break
+        except Exception as e:
+            err_str = str(e)
+            last_error = err_str
+            if "503" in err_str or "UNAVAILABLE" in err_str:
+                print(f"モデル {model} が混雑中（503/UNAVAILABLE）です。")
+                if model != models_to_try[-1]:
+                    print("別のモデルで再試行します...")
+                    time.sleep(5)
+                continue
+            else:
+                print(f"APIエラーが発生しました: {e}")
+                # 503以外の致命的なエラーは他のモデルを試さずに終了
+                break
+
+    # 全モデルで失敗した場合はあきらめる
+    if response is None:
+        print(f"文字起こしに失敗しました（すべてのモデルが利用不可、またはエラー）: {last_error}")
+        try:
+            client.files.delete(name=audio_file.name)
+        except Exception:
+            pass
+        if converted_tmp and os.path.exists(converted_tmp):
+            try:
+                os.remove(converted_tmp)
+            except Exception:
+                pass
+        return None, None
+
+    elapsed = time.time() - start_time
+    print(f"文字起こし完了！ (処理時間: {elapsed:.1f} 秒)")
+
+    # アップロードファイルを削除（Gemini側）
+    try:
+        client.files.delete(name=audio_file.name)
+    except Exception:
+        pass
+
+    # 変換した一時ファイルを削除（ローカル）
+    if converted_tmp and os.path.exists(converted_tmp):
+        try:
+            os.remove(converted_tmp)
+        except Exception:
+            pass
+
+    # response.text が None/空の場合、partsから直接テキストを取得する（thinking モデル対策）
+    full_text = response.text
+    if not full_text and response.candidates:
+        parts_text = []
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, 'text') and part.text and not getattr(part, 'thought', False):
+                parts_text.append(part.text)
+        if parts_text:
+            full_text = "".join(parts_text)
+
+    if not full_text or not full_text.strip():
+        finish = response.candidates[0].finish_reason if response.candidates else "UNKNOWN"
+        print(f"文字起こし結果が空でした。(finish_reason: {finish})")
+        return None, None
+
+    full_text = full_text.strip()
+
+    # フィラー（つなぎ言葉）の後処理除去
+    full_text = remove_fillers(full_text)
+
+    return full_text, ""
+
+
+# ============================================================
+# タイトル生成
+# ============================================================
+
+def generate_title_from_text(text, api_key):
+    """文字起こしテキストから簡潔なタイトルを生成する"""
+    from google import genai
+    from google.genai import types as genai_types
+    import re
+
+    print("\n文字起こし内容からタイトルを生成中...")
+    
+    # 試行するモデルの優先順位リスト
+    models_to_try = [GEMINI_MODEL]
+    if GEMINI_MODEL != "gemini-2.5-flash":
+        models_to_try.append("gemini-2.5-flash")
+    if "gemini-2.0-flash" not in models_to_try:
+        models_to_try.append("gemini-2.0-flash")
+
+    # thinking_config をオフにする設定 (thinkingモデル対応)
+    gen_config = genai_types.GenerateContentConfig(
+        thinking_config=genai_types.ThinkingConfig(thinking_budget=0)
+    )
+
+    client = genai.Client(api_key=api_key)
+    prompt = """以下の文字起こしテキストから、Windowsのファイル名として使える簡潔なタイトル（最大20文字程度、日本語）を1つ作成してください。
+日付や時刻を含める必要はありません。
+
+【ルール】
+- ファイル名に使えない記号（\\ / : * ? \" < > |）は絶対に含めないでください。
+- 余計な説明（「タイトル案：」など）や改行は入れず、タイトル名だけを出力してください。
+- 適切な内容が見つからない場合は「文字起こし結果」とだけ出力してください。
+"""
+
+    for model in models_to_try:
+        try:
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=[prompt, text[:5000]], # 最初の5000文字程度で判定
+                    config=gen_config,
+                )
+            except Exception:
+                # configパラメータに対応していない古いモデル向け
+                response = client.models.generate_content(
+                    model=model,
+                    contents=[prompt, text[:5000]],
+                )
+
+            # テキストの取り出し（thinkingモデル等でresponse.textが空になる対策）
+            title_candidate = response.text
+            if not title_candidate and response.candidates:
+                parts_text = []
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'text') and part.text and not getattr(part, 'thought', False):
+                        parts_text.append(part.text)
+                if parts_text:
+                    title_candidate = "".join(parts_text)
+
+            if title_candidate:
+                title_candidate = title_candidate.strip()
+                # 引用符の除去
+                title_candidate = title_candidate.replace('"', '').replace("'", "").replace("「", "").replace("」", "")
+                # 改行の除去
+                title_candidate = title_candidate.split("\n")[0].strip()
+                # Windowsの禁止文字を削除
+                title_candidate = re.sub(r'[\\/:*?"<>|]', '', title_candidate)
+                
+                if title_candidate:
+                    print(f"  生成されたタイトル: {title_candidate} (モデル: {model})")
+                    return title_candidate
+        except Exception as e:
+            print(f"  モデル {model} でのタイトル生成に失敗しました: {e}")
+
+    return "文字起こし結果"
+
+
+# ============================================================
+# PDF生成
+# ============================================================
+
+def create_pdf(full_text, timestamped_text, output_filepath, audio_filename=""):
+    """文字起こしテキストをPDFとして出力する"""
+    from fpdf import FPDF
+
+    print("\nPDFを生成中...")
+
+    font_path = find_japanese_font()
+    font_family = "Japanese"
+    
+    if not font_path:
+        # 日本語文字が含まれているか確認 (Unicode範囲: 3000-30FF, 4E00-9FFF など)
+        # 簡易的に \u3000 以上の文字があるかで判定
+        has_japanese = any(ord(c) >= 0x3000 for c in full_text)
+        
+        if has_japanese:
+            print("日本語フォントが見つかりません。テキストファイルとして保存します。")
+            txt_path = output_filepath.replace(".pdf", ".txt")
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(full_text)
+            print(f"テキスト保存: {txt_path}")
+            return txt_path
+        else:
+            print("日本語フォントが見つかりませんが、アルファベットテキストのため標準フォント(Helvetica)を使用します。")
+            font_family = "Helvetica"
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    
+    if font_family == "Japanese":
+        pdf.add_font("Japanese", "", font_path, uni=True)
+        pdf.add_font("Japanese", "B", font_path, uni=True)
+
+    pdf.add_page()
+
+    # タイトルとヘッダー情報（日本語/英語で切り替え）
+    if font_family == "Japanese":
+        pdf.set_font("Japanese", "B", size=18)
+        pdf.cell(0, 15, "音声文字起こし", new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.ln(3)
+
+        pdf.set_font("Japanese", "", size=9)
+        pdf.set_text_color(100, 100, 100)
+        now = datetime.datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+        pdf.cell(0, 6, f"作成日時: {now}", new_x="LMARGIN", new_y="NEXT")
+        if audio_filename:
+            pdf.cell(0, 6, f"音声ファイル: {audio_filename}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 6, f"モデル: {GEMINI_MODEL}", new_x="LMARGIN", new_y="NEXT")
+    else:
+        pdf.set_font("Helvetica", "B", size=18)
+        pdf.cell(0, 15, "Audio Transcription", new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.ln(3)
+
+        pdf.set_font("Helvetica", "", size=9)
+        pdf.set_text_color(100, 100, 100)
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        pdf.cell(0, 6, f"Created: {now}", new_x="LMARGIN", new_y="NEXT")
+        if audio_filename:
+            pdf.cell(0, 6, f"Audio File: {audio_filename}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 6, f"Model: {GEMINI_MODEL}", new_x="LMARGIN", new_y="NEXT")
+        
+    pdf.set_text_color(0, 0, 0)
+
+    pdf.ln(5)
+    pdf.set_draw_color(200, 200, 200)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(8)
+
+    # 本文の出力
+    pdf.set_font(font_family, "", size=PDF_FONT_SIZE)
+    for para in full_text.split("\n"):
+        if para.strip() == "":
+            pdf.ln(4)
+        else:
+            if font_family == "Helvetica":
+                # latin-1でエンコードできない文字を?に置き換えてクラッシュを防ぐ
+                para_clean = para.strip().encode("latin-1", errors="replace").decode("latin-1")
+                pdf.multi_cell(0, PDF_LINE_HEIGHT, para_clean)
+            else:
+                pdf.multi_cell(0, PDF_LINE_HEIGHT, para.strip(), wrapmode="CHAR")
+            pdf.ln(1)
+
+    pdf.output(output_filepath)
+    file_size_kb = os.path.getsize(output_filepath) / 1024
+    print(f"PDF保存完了: {output_filepath}")
+    print(f"  サイズ: {file_size_kb:.1f} KB")
+    return output_filepath
+
+
+
+# ============================================================
+# メイン処理
+# ============================================================
+
+def main():
+    global GEMINI_MODEL
+
+    # コマンドライン引数
+    parser = argparse.ArgumentParser(description="Gemini Voice Transcriber - Audio Transcription to PDF")
+    parser.add_argument("audio_file", nargs="?", default=None,
+                        help="音声/動画ファイルのパス（省略でPC音声録音モード）")
+    parser.add_argument("-l", "--language", default=None,
+                        help="言語コード (例: ja, en)")
+    parser.add_argument("-m", "--model", default=None,
+                        choices=["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
+                        help="Geminiモデル")
+
+    args = parser.parse_args()
+
+    if args.model:
+        GEMINI_MODEL = args.model
+
+    print("=" * 50)
+    print("  Gemini Voice Transcriber")
+    print("=" * 50)
+    print(f"  モデル: {GEMINI_MODEL}")
+    print()
+
+    # APIキー確認
+    api_key = os.environ.get("GEMINI_API_KEY", API_KEY).strip()
+    if not api_key:
+        print("APIキーが設定されていません。")
+        print()
+        print("【設定方法】")
+        print("  PowerShellで以下を実行してください:")
+        print('  setx GEMINI_API_KEY "あなたのAPIキー"')
+        print()
+        print("  APIキー取得: https://aistudio.google.com/apikey")
+        sys.exit(1)
+
+    # 出力ディレクトリ作成
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # モード分岐
+    if args.audio_file:
+        # 既存ファイルを文字起こし
+        audio_filepath = os.path.abspath(args.audio_file)
+        if not os.path.exists(audio_filepath):
+            print(f"ファイルが見つかりません: {audio_filepath}")
+            sys.exit(1)
+        file_size_mb = os.path.getsize(audio_filepath) / (1024 * 1024)
+        print(f"入力ファイル: {audio_filepath}")
+        print(f"  サイズ: {file_size_mb:.1f} MB")
+        audio_filename = os.path.basename(audio_filepath)
+    else:
+        # PC音声をリアルタイム録音
+        recorder = AudioRecorder()
+        print("【使い方】")
+        print("  1. Enterキー → 録音開始")
+        print("  2. もう一度Enterキー → 録音停止")
+        print()
+
+        try:
+            input(">>> Enterキーを押して録音を開始...")
+        except KeyboardInterrupt:
+            print("\n中止しました。")
+            sys.exit(0)
+
+        print()
+        print("●録音中... (Enterキーで停止)")
+        recorder.start_recording()
+
+        try:
+            input()
+        except KeyboardInterrupt:
+            pass
+
+        print("録音停止中...")
+        recorder.stop_recording()
+
+        audio_filename = f"recording_{timestamp}.wav"
+        audio_filepath = os.path.join(OUTPUT_DIR, audio_filename)
+
+        if not recorder.save_wav(audio_filepath):
+            print("録音データの保存に失敗しました。")
+            recorder.cleanup()
+            sys.exit(1)
+        recorder.cleanup()
+
+    # Gemini 文字起こし
+    full_text, timestamped_text = transcribe_with_gemini(
+        audio_filepath, api_key, language=args.language
+    )
+
+    if not full_text or not full_text.strip():
+        print("文字起こし結果が空です。音声が含まれていない可能性があります。")
+        sys.exit(1)
+
+    # タイトルの自動生成
+    title_name = generate_title_from_text(full_text, api_key)
+    # ファイル名用のクリーンアップ（念のため）
+    import re
+    title_name = re.sub(r'[\\/:*?"<>|]', '', title_name).strip()
+    if not title_name:
+        title_name = "文字起こし結果"
+
+    # 結果を表示
+    print("\n" + "-" * 50)
+    print("文字起こし結果:")
+    print("-" * 50)
+    print(full_text)
+    print("-" * 50)
+
+    # PDF生成
+    pdf_filename = f"{title_name}_{timestamp}.pdf"
+    pdf_filepath = os.path.join(OUTPUT_DIR, pdf_filename)
+    create_pdf(full_text, timestamped_text, pdf_filepath, audio_filename=audio_filename)
+
+
+    # 完了
+    print("\n" + "=" * 50)
+    print("  すべての処理が完了しました！")
+    print("=" * 50)
+    print(f"\n  出力フォルダ: {OUTPUT_DIR}")
+    print(f"  PDF:  {pdf_filename}")
+    print()
+
+
+if __name__ == "__main__":
+    main()

@@ -491,7 +491,6 @@ def convert_md_to_pdf(md_path, pdf_path):
     pdf.output(pdf_path)
     print(f"成功: {pdf_path}")
     return True
-
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -500,3 +499,7 @@ if __name__ == "__main__":
     pdf2 = os.path.join(base_dir, "manual.pdf")
     convert_md_to_pdf(md2, pdf2)
     
+    # 2. manual_EN.md
+    md_en = os.path.join(base_dir, "manual_EN.md")
+    pdf_en = os.path.join(base_dir, "manual_EN.pdf")
+    convert_md_to_pdf(md_en, pdf_en)

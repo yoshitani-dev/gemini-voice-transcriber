@@ -87,6 +87,8 @@ python split_wav.py
 
 ---
 
+If this project is useful, please consider giving it a star ⭐
+
 ## 日本語
 
 ## 📥 簡単ダウンロード
@@ -152,6 +154,7 @@ python web_server.py
 
 ---
 
+このプロジェクトが役に立ったら、Starを押してもらえると嬉しいです ⭐
 ## 🗺️ Roadmap / 今後の予定
 - [ ] Add dark mode support to the Web UI / Web UIのダークモード対応
 - [ ] Support export as Markdown / Markdown形式での書き出しサポート

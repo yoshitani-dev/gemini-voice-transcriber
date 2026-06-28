@@ -88,7 +88,7 @@ python split_wav.py
 If this project is useful, please consider giving it a star ⭐
 ---
 
-If this project is useful, please consider giving it a star ⭐
+
 
 ## 日本語
 
@@ -153,9 +153,10 @@ python web_server.py
 ダブルクリックするだけで簡単に起動できるバッチファイルも同梱しています：
 - `run_transcriber.bat` (ダブルクリックでPC音声の録音を開始。音声・動画ファイルをこのアイコンの上にドラッグ＆ドロップすると直接文字起こしを実行します)
 
+このプロジェクトが役に立ったら、Starを押してもらえると嬉しいです ⭐
 ---
 
-このプロジェクトが役に立ったら、Starを押してもらえると嬉しいです ⭐
+
 ## 🗺️ Roadmap / 今後の予定
 - [ ] Add dark mode support to the Web UI / Web UIのダークモード対応
 - [ ] Support export as Markdown / Markdown形式での書き出しサポート

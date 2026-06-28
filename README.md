@@ -85,6 +85,7 @@ For large audio files:
 python split_wav.py
 ```
 
+If this project is useful, please consider giving it a star ⭐
 ---
 
 If this project is useful, please consider giving it a star ⭐

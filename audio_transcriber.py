@@ -436,7 +436,7 @@ def remove_fillers(text):
 # Gemini 文字起こし
 # ============================================================
 
-def transcribe_with_gemini(audio_filepath, api_key, language=None):
+def transcribe_with_gemini(audio_filepath, api_key, language=None, progress_callback=None):
     """Gemini APIで音声ファイルを文字起こしする"""
     from google import genai
 
@@ -449,11 +449,15 @@ def transcribe_with_gemini(audio_filepath, api_key, language=None):
 
     # 100MB制限対応: 必要に応じて圧縮
     file_size_mb = os.path.getsize(audio_filepath) / (1024 * 1024)
+    if progress_callback:
+        progress_callback(2, f"ファイルを確認中... ({file_size_mb:.1f} MB)")
     print(f"\n元ファイル: {file_size_mb:.1f} MB")
     upload_path, converted_tmp = compress_audio_for_upload(audio_filepath)
     converted_tmp = upload_path if converted_tmp else None
 
     file_size_mb = os.path.getsize(upload_path) / (1024 * 1024)
+    if progress_callback:
+        progress_callback(3, f"Geminiにアップロード中... ({file_size_mb:.1f} MB)")
     print(f"音声ファイルをアップロード中... ({file_size_mb:.1f} MB)")
 
     # MIMEタイプを判定
@@ -471,6 +475,8 @@ def transcribe_with_gemini(audio_filepath, api_key, language=None):
     print(f"  アップロード完了: {audio_file.name}")
 
     # 処理完了を待機
+    if progress_callback:
+        progress_callback(3, "ファイルの処理を待機中...")
     print("ファイル処理を待機中...")
     wait_count = 0
     max_wait = 900  # 900回 * 2秒 = 1800秒 (30分)
@@ -516,6 +522,8 @@ def transcribe_with_gemini(audio_filepath, api_key, language=None):
 """
 
     # 文字起こし実行
+    if progress_callback:
+        progress_callback(3, "Geminiで文字起こしを実行中...")
     print("Geminiで文字起こし中...")
     start_time = time.time()
 
@@ -880,6 +888,20 @@ def main():
         result = extractor.run(video_path)
         if not result["success"]:
             sys.exit(1)
+            
+        # スライド抽出なしの場合は、PDFの文字起こしも出力する（仕様の整合性のため）
+        if not args.extract_key_slides and result.get("transcript_text"):
+            full_text = result["transcript_text"]
+            audio_filename = os.path.basename(result.get("audio_path", video_path))
+            title_name = generate_title_from_text(full_text, api_key)
+            import re
+            title_name = re.sub(r'[\\/:*?"<>|]', '', title_name).strip() or "文字起こし結果"
+            
+            pdf_filename = f"{title_name}_{timestamp}.pdf"
+            pdf_filepath = os.path.join(args.output_dir or OUTPUT_DIR, pdf_filename)
+            create_pdf(full_text, "", pdf_filepath, audio_filename=audio_filename)
+            print(f"\n  PDF:  {pdf_filename}")
+            
         return
 
     elif args.audio_file:

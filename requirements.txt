@@ -4,5 +4,3 @@ fpdf2
 fastapi
 uvicorn
 python-multipart
-av
-Pillow

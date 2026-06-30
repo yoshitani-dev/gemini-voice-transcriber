@@ -112,7 +112,8 @@ python audio_transcriber.py --record-screen
 ```
 > [!WARNING]
 > **Screen Recording Mode Privacy Notice**
-> - The entire desktop will be recorded. Any overlapping windows, notifications, or personal chats will be captured and analyzed.
+> - The entire desktop will be recorded. Any overlapping windows, notifications, or personal chats will be captured.
+> - **IMPORTANT**: Screenshots extracted from the recording will be uploaded to **Google Gemini API cloud servers** for analysis.
 > - Please ensure you hide sensitive information before starting.
 > - Ensure you have permission to record the meeting.
 > - Screen recording requires `ffmpeg`.
@@ -216,8 +217,9 @@ python audio_transcriber.py --record-screen
 
 > [!WARNING]
 > **画面録画モードの注意（プライバシーについて）**
-> - 画面録画モードでは「デスクトップ全体」が録画されます。上に重なった別のウィンドウや、ポップアップ通知、個人チャットなどもすべて録画・解析されてしまいます。
-> - パスワードや個人情報が映り込まないよう十分ご注意ください。
+> - 画面録画モードでは「デスクトップ全体」が録画されます。上に重なった別のウィンドウや、ポップアップ通知、個人チャットなどもすべて録画されます。
+> - **重要**: 録画された動画から抽出されたスクリーンショット画像は、解析のためにインターネット経由で **Google Gemini API（クラウドサーバー）** へ送信されます。
+> - パスワードや機密情報が映り込まないよう十分ご注意ください。
 > - 会議などで必要な録画の許可を得た上でご利用ください。
 > - 本機能の利用には `ffmpeg` が必須となります。
 

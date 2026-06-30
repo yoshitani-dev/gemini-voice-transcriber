@@ -863,7 +863,7 @@ Rules:
 
     @staticmethod
     def _text_similarity(text1, text2):
-        """2つのテキストの簡易的な類似度を計算する（共通単語比率）。
+        """2つのテキストの類似度を計算する。日本語にも対応するため difflib を使用。
 
         Returns:
             float: 0.0 〜 1.0 の類似度
@@ -871,17 +871,5 @@ Rules:
         if not text1 or not text2:
             return 0.0
 
-        # 単語分割（英語はスペース、日本語は文字単位）
-        words1 = set(text1.lower().split())
-        words2 = set(text2.lower().split())
-
-        if not words1 or not words2:
-            return 0.0
-
-        intersection = words1 & words2
-        union = words1 | words2
-
-        if not union:
-            return 0.0
-
-        return len(intersection) / len(union)
+        import difflib
+        return difflib.SequenceMatcher(None, text1, text2).ratio()

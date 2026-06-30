@@ -174,9 +174,9 @@ async def transcribe_file(file: UploadFile = File(...)):
     tmp_filepath = os.path.join(OUTPUT_DIR, safe_name)
 
     try:
+        import shutil
         with open(tmp_filepath, "wb") as f:
-            content = await file.read()
-            f.write(content)
+            shutil.copyfileobj(file.file, f)
     except Exception as e:
         state.reset()
         return JSONResponse({"error": f"ファイル保存エラー: {e}"}, status_code=500)
@@ -250,157 +250,19 @@ def _process_audio(audio_filepath, audio_filename, timestamp):
         return
 
     try:
-        client = genai.Client(api_key=api_key)
+        # ========== Step 2/3: 音声ファイルの圧縮・アップロード・文字起こし ==========
+        def progress_cb(step: int, msg: str):
+            state.step = step
+            state.message = msg
 
-        # ========== Step 2: サイズ確認・圧縮 ==========
-        state.step = 2
-        file_size_mb = os.path.getsize(audio_filepath) / (1024 * 1024)
-        if file_size_mb > 95:
-            state.message = f"ファイルが大きいため圧縮中... ({file_size_mb:.0f} MB)"
-        else:
-            state.message = f"音声ファイルを確認中... ({file_size_mb:.1f} MB)"
-
-        upload_path, is_converted = compress_audio_for_upload(audio_filepath)
-        # is_converted が True の場合、upload_path 自体が一時ファイルなので後で削除する
-        converted_tmp = upload_path if is_converted else None
-        upload_size_mb = os.path.getsize(upload_path) / (1024 * 1024)
-
-        # ========== Step 3a: アップロード ==========
-        state.step = 3
-        state.message = f"Geminiにアップロード中... ({upload_size_mb:.1f} MB)"
-
-        upload_ext = os.path.splitext(upload_path)[1]
-        mime_type, _ = mimetypes.guess_type(upload_path)
-        if not mime_type:
-            mime_type = "audio/mp4" if upload_ext.lower() == ".m4a" else "audio/wav"
-
-        safe_filename = f"audio{upload_ext}"
-        with open(upload_path, "rb") as f:
-            audio_file = client.files.upload(
-                file=f,
-                config={"display_name": safe_filename, "mime_type": mime_type},
-            )
-
-        # ========== Step 3b: Geminiがファイルを処理するのを待機 ==========
-        wait_count = 0
-        max_wait = 900  # 900回 * 2秒 = 1800秒 (30分)
-        while audio_file.state.name == "PROCESSING":
-            time.sleep(2)
-            wait_count += 1
-            if wait_count > max_wait:
-                state.error = "ファイルの処理がタイムアウトしました（30分経過）。処理を中止します。"
-                try:
-                    client.files.delete(name=audio_file.name)
-                except Exception:
-                    pass
-                if converted_tmp and os.path.exists(converted_tmp):
-                    try:
-                        os.remove(converted_tmp)
-                    except Exception:
-                        pass
-                state.status = "idle"
-                return
-            state.message = f"Geminiがファイルを処理中... ({wait_count * 2}秒経過)"
-            audio_file = client.files.get(name=audio_file.name)
-
-        if audio_file.state.name == "FAILED":
-            state.error = "Geminiでのファイル処理に失敗しました。ファイル形式を確認してください。"
-            state.status = "idle"
-            return
-
-        # ========== Step 3c: 文字起こし（AIが長文を生成する部分） ==========
-        prompt = """以下の音声を文字起こししてください。
-
-【指示】
-日本語の音声は日本語で、英語は英語で文字起こししてください。
-- 句読点や改行を適切に入れて、読みやすい形式にしてください。
-- 複数の話者がいる場合は可能な限り区別してください（例: 話者A、話者B）。
-- 聞き取れない部分は [聞き取り不可] と記載してください。
-- 出力は文字起こしの全文テキストのみとしてください。余計な説明やコメントは不要です。
-
-【重要】フィラー（つなぎ言葉）の除去:
-以下のような意味のないつなぎ言葉・フィラーは全て削除し、絶対に出力に含めないでください:
-「えー」「あのー」「あの」「まあ」「その」「なんか」「ええと」「うーん」「うん」「えっと」「まあね」
-「とか」「ほら」「ねー」「ね」「さー」「ま」「あー」「うー」「え」「お」
-文頭・文末・文中のどこにあっても削除してください。
-"""
-
-        # thinking モデル用の設定（thinking_budget=0 で思考モードをOFFにし response.text が空になるのを防ぐ）
-        from google.genai import types as genai_types
-        gen_config = genai_types.GenerateContentConfig(
-            thinking_config=genai_types.ThinkingConfig(thinking_budget=0)
+        full_text, _ = transcribe_with_gemini(
+            audio_filepath, api_key, progress_callback=progress_cb
         )
 
-        # モデルを順番に試す（503の場合は次のモデルへ）
-        models_to_try = [GEMINI_MODEL]
-        if GEMINI_MODEL != "gemini-2.5-flash":
-            models_to_try.append("gemini-2.5-flash")
-        if "gemini-2.0-flash" not in models_to_try:
-            models_to_try.append("gemini-2.0-flash")
-
-        response = None
-        last_error = None
-        for model in models_to_try:
-            try:
-                state.message = f"AI文字起こし中... (音声の長さにより数分かかる場合があります)"
-                try:
-                    response = client.models.generate_content(
-                        model=model,
-                        contents=[prompt, audio_file],
-                        config=gen_config,
-                    )
-                except Exception:
-                    # thinking_config に対応していない古いモデルはconfigなしで再試行
-                    response = client.models.generate_content(
-                        model=model,
-                        contents=[prompt, audio_file],
-                    )
-                break
-            except Exception as e:
-                err_str = str(e)
-                last_error = err_str
-                if "503" in err_str or "UNAVAILABLE" in err_str:
-                    state.message = f"サーバーが混雑中... {model} → 別モデルで再試行します"
-                    time.sleep(5)
-                    continue
-                else:
-                    raise
-
-        # アップロードファイルをGemini側から削除
-        try:
-            client.files.delete(name=audio_file.name)
-        except Exception:
-            pass
-
-        # ローカルの一時ファイルを削除
-        if converted_tmp and os.path.exists(converted_tmp):
-            try:
-                os.remove(converted_tmp)
-            except Exception:
-                pass
-
-        if response is None:
-            state.error = f"文字起こし失敗（全モデルで試行済み）: {last_error}"
+        if not full_text:
+            state.error = "文字起こしに失敗しました。ファイル形式を確認してください。"
             state.status = "idle"
             return
-
-        if not response.text or not response.text.strip():
-            # response.text が None/空の場合、partsから直接テキストを取得（thinking モデル対策）
-            parts_text = []
-            if response.candidates:
-                for part in response.candidates[0].content.parts:
-                    if hasattr(part, 'text') and part.text and not getattr(part, 'thought', False):
-                        parts_text.append(part.text)
-            raw = "".join(parts_text).strip()
-        else:
-            raw = response.text
-
-        if not raw:
-            finish = response.candidates[0].finish_reason if response.candidates else "UNKNOWN"
-            state.error = f"文字起こし結果が空です。音声が含まれていないか、認識できませんでした。(finish_reason: {finish})"
-            state.status = "idle"
-            return
-        full_text = remove_fillers(raw.strip())
 
         # ========== タイトル生成 ==========
         state.message = "AIがタイトルを自動生成中..."

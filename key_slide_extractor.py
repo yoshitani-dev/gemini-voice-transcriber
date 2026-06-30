@@ -87,7 +87,7 @@ class KeySlideExtractor:
     """
 
     def __init__(self, api_key, model="gemini-3.5-flash",
-                 frame_interval=10, max_key_slides=15,
+                 frame_interval=60, max_key_slides=15,
                  analyze_max_frames=50, importance_threshold=50,
                  dry_run=False, output_dir=None):
         self.api_key = api_key

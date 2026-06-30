@@ -94,7 +94,7 @@ Extract important slides and generate rich minutes from recorded meeting videos:
 python audio_transcriber.py --video meeting.mp4 --extract-key-slides
 
 # Custom settings
-python audio_transcriber.py --video meeting.mp4 --extract-key-slides --frame-interval 10 --max-key-slides 15
+python audio_transcriber.py --video meeting.mp4 --extract-key-slides --frame-interval 30 --max-key-slides 15
 
 # Dry-run (check frame extraction without API calls)
 python audio_transcriber.py --video meeting.mp4 --extract-key-slides --dry-run
@@ -182,7 +182,7 @@ python web_server.py
 python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides
 
 # 詳細設定
-python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides --frame-interval 10 --max-key-slides 15
+python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides --frame-interval 30 --max-key-slides 15
 
 # 動作確認（APIを呼ばずにフレーム抽出だけ確認）
 python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides --dry-run

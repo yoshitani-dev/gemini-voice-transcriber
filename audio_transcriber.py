@@ -760,8 +760,8 @@ def main():
                         help="動画ファイルのパス（キースライド抽出＋文字起こし）")
     parser.add_argument("--extract-key-slides", action="store_true",
                         help="動画からキースライドを抽出する")
-    parser.add_argument("--frame-interval", type=int, default=10,
-                        help="フレーム抽出間隔（秒）（デフォルト: 10）")
+    parser.add_argument("--frame-interval", type=int, default=60,
+                        help="フレーム抽出間隔（秒）（デフォルト: 60）")
     parser.add_argument("--max-key-slides", type=int, default=15,
                         help="最大キースライド数（デフォルト: 15）")
     parser.add_argument("--analyze-max-frames", type=int, default=50,

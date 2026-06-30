@@ -88,7 +88,7 @@ class KeySlideExtractor:
 
     def __init__(self, api_key, model="gemini-3.5-flash",
                  frame_interval=10, max_key_slides=15,
-                 analyze_max_frames=60, importance_threshold=50,
+                 analyze_max_frames=50, importance_threshold=50,
                  dry_run=False, output_dir=None):
         self.api_key = api_key
         self.model = model
@@ -331,17 +331,18 @@ Rules:
                         return result
 
                 except Exception as e:
-                    err_str = str(e)
-                    if "503" in err_str or "UNAVAILABLE" in err_str:
-                        if model != self._models_to_try[-1]:
-                            time.sleep(2)
+                    err_str = str(e).lower()
+                    if "503" in err_str or "unavailable" in err_str or "429" in err_str or "too many requests" in err_str or "resourceexhausted" in err_str:
+                        if model != self._models_to_try[-1] or "429" in err_str:
+                            # 429等のレート制限時は少し長めに待機
+                            time.sleep(5)
                             continue
                     # その他のエラーはリトライへ
                     break
 
             # リトライ前に少し待つ
             if attempt < max_retries - 1:
-                time.sleep(3)
+                time.sleep(5)
 
         # 全リトライ失敗
         return default_result
@@ -392,9 +393,9 @@ Rules:
 
             analyzed.append(frame)
 
-            # APIレート制限対策（短い待機）
+            # APIレート制限対策（無料枠15RPM考慮の待機）
             if i < len(frames) - 1:
-                time.sleep(1)
+                time.sleep(2)
 
         if skipped > 0:
             print(f"\n  ※ {skipped} フレームの解析がスキップされました")

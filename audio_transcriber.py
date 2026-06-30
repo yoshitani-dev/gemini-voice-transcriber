@@ -210,6 +210,55 @@ class AudioRecorder:
 
 
 # ============================================================
+# 画面録画クラス (ScreenRecorder)
+# ============================================================
+class ScreenRecorder:
+    """ffmpeg gdigrabを使ってデスクトップ画面を録画するクラス"""
+    
+    def __init__(self, output_path, framerate=10, preset="ultrafast"):
+        self.output_path = output_path
+        self.framerate = framerate
+        self.preset = preset
+        self.proc = None
+        self.is_recording = False
+        
+    def start_recording(self):
+        import subprocess
+        # 低負荷設定での全画面キャプチャ
+        cmd = [
+            "ffmpeg", "-y", "-f", "gdigrab", "-framerate", str(self.framerate),
+            "-i", "desktop", "-c:v", "libx264", "-preset", self.preset,
+            "-pix_fmt", "yuv420p", self.output_path
+        ]
+        print(f"画面録画を開始します (framerate={self.framerate}, preset={self.preset})")
+        # CREATE_NO_WINDOW で ffmpeg をバックグラウンド実行（邪魔なコンソールを出さない）
+        creationflags = 0
+        if os.name == 'nt':
+            creationflags = subprocess.CREATE_NO_WINDOW
+            
+        self.proc = subprocess.Popen(
+            cmd, 
+            stdin=subprocess.PIPE, 
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.DEVNULL,
+            creationflags=creationflags
+        )
+        self.is_recording = True
+        
+    def stop_recording(self):
+        self.is_recording = False
+        if self.proc and self.proc.poll() is None:
+            try:
+                # 正常終了させるために 'q' を送る
+                self.proc.communicate(b"q", timeout=5)
+            except Exception:
+                self.proc.terminate()
+                self.proc.wait()
+            print("画面録画を停止しました。")
+
+
+
+# ============================================================
 # 音声ファイル圧縮（100MB制限対応）
 # ============================================================
 
@@ -773,6 +822,10 @@ def main():
                         help="Gemini APIを呼ばず、フレーム抽出だけ確認する")
     parser.add_argument("--output-dir", default=None,
                         help="出力先ディレクトリ（デフォルト: output/）")
+    
+    # リアルタイム画面録画オプション
+    parser.add_argument("--record-screen", action="store_true",
+                        help="PC音声と一緒にデスクトップ画面をリアルタイム録画し、終了後に全自動でスライド抽出と文字起こしを行う")
 
     args = parser.parse_args()
 
@@ -840,21 +893,59 @@ def main():
         print(f"  サイズ: {file_size_mb:.1f} MB")
         audio_filename = os.path.basename(audio_filepath)
     else:
-        # PC音声をリアルタイム録音
+        # PC音声をリアルタイム録音（＋録画）
+        screen_recorder = None
+        video_filepath = None
+        
+        if args.record_screen:
+            from key_slide_extractor import check_ffmpeg, print_ffmpeg_install_guide
+            if not check_ffmpeg():
+                print_ffmpeg_install_guide()
+                print("\nエラー: 画面録画モードには ffmpeg が必要です。インストール後に再実行してください。")
+                sys.exit(1)
+                
+            print("\n" + "!" * 50)
+            print("  ⚠️ プライバシーに関する警告 ⚠️")
+            print("!" * 50)
+            print("  画面録画モードでは、デスクトップ全体が録画されます。")
+            print("  以下の点に注意してください：")
+            print("  - パスワードや個人情報を表示しないこと")
+            print("  - 通知や個人的なチャット画面を閉じておくこと")
+            print("  - 会議などで必要な録画の許可を得ていること")
+            print("  - 上に重なった別のウィンドウも一緒に録画されてしまいます\n")
+            ans = input("  続行しますか？ (y/N): ")
+            if ans.lower() != 'y':
+                print("録画をキャンセルしました。")
+                sys.exit(0)
+                
+            os.makedirs(os.path.join(OUTPUT_DIR, "screen_recordings"), exist_ok=True)
+            video_filename = f"screen_{timestamp}.mp4"
+            video_filepath = os.path.join(OUTPUT_DIR, "screen_recordings", video_filename)
+            screen_recorder = ScreenRecorder(output_path=video_filepath, framerate=10, preset="ultrafast")
+
         recorder = AudioRecorder()
-        print("【使い方】")
-        print("  1. Enterキー → 録音開始")
-        print("  2. もう一度Enterキー → 録音停止")
+        print("\n【使い方】")
+        if args.record_screen:
+            print("  1. Enterキー → 画面録画 ＆ 録音 開始")
+            print("  2. もう一度Enterキー → 停止して解析開始")
+        else:
+            print("  1. Enterキー → 録音開始")
+            print("  2. もう一度Enterキー → 録音停止")
         print()
 
         try:
-            input(">>> Enterキーを押して録音を開始...")
+            input(">>> Enterキーを押して開始...")
         except KeyboardInterrupt:
             print("\n中止しました。")
             sys.exit(0)
 
         print()
-        print("●録音中... (Enterキーで停止)")
+        if args.record_screen:
+            print("●画面録画 ＆ 音声録音中... (Enterキーで停止)")
+            screen_recorder.start_recording()
+        else:
+            print("●録音中... (Enterキーで停止)")
+            
         recorder.start_recording()
 
         try:
@@ -862,8 +953,10 @@ def main():
         except KeyboardInterrupt:
             pass
 
-        print("録音停止中...")
+        print("停止処理中...")
         recorder.stop_recording()
+        if args.record_screen:
+            screen_recorder.stop_recording()
 
         audio_filename = f"recording_{timestamp}.wav"
         audio_filepath = os.path.join(OUTPUT_DIR, audio_filename)
@@ -873,8 +966,26 @@ def main():
             recorder.cleanup()
             sys.exit(1)
         recorder.cleanup()
+        
+        # 画面録画していた場合はキースライド抽出へ投げて終了
+        if args.record_screen and os.path.exists(video_filepath):
+            from key_slide_extractor import KeySlideExtractor
+            extractor = KeySlideExtractor(
+                api_key=api_key,
+                model=GEMINI_MODEL,
+                frame_interval=args.frame_interval,
+                max_key_slides=args.max_key_slides,
+                analyze_max_frames=args.analyze_max_frames,
+                dry_run=args.dry_run,
+                output_dir=args.output_dir or OUTPUT_DIR,
+                skip_frame_analysis=False,
+            )
+            result = extractor.run(video_path=video_filepath, provided_audio_path=audio_filepath)
+            if not result["success"]:
+                sys.exit(1)
+            return
 
-    # Gemini 文字起こし
+    # Gemini 文字起こし (録音のみ、または既存ファイルの場合)
     full_text, timestamped_text = transcribe_with_gemini(
         audio_filepath, api_key, language=args.language
     )

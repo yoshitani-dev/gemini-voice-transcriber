@@ -105,6 +105,18 @@ python audio_transcriber.py --video meeting.mp4 --extract-key-slides --dry-run
 - `key_slides.json` — Structured analysis data for each slide
 - `rich_minutes.md` — Integrated minutes with slides and transcript
 
+#### 5. 🎥 Real-time Screen Recording & Auto Analysis
+You can record your PC screen and audio simultaneously, then automatically extract slides and transcribe the meeting:
+```powershell
+python audio_transcriber.py --record-screen
+```
+> [!WARNING]
+> **Screen Recording Mode Privacy Notice**
+> - The entire desktop will be recorded. Any overlapping windows, notifications, or personal chats will be captured and analyzed.
+> - Please ensure you hide sensitive information before starting.
+> - Ensure you have permission to record the meeting.
+> - Screen recording requires `ffmpeg`.
+
 If this project is useful, please consider giving it a star ⭐
 ---
 
@@ -194,6 +206,20 @@ python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides --dry-
 - `rich_minutes.md` — スライドと文字起こしが統合されたリッチ議事録
 
 > ※ ffmpegが必要です。インストール: `winget install ffmpeg`
+
+#### 5. 🎥 リアルタイム画面録画 ＆ 全自動解析
+PC画面の録画と音声録音を同時に行い、終了後に自動でスライド抽出と文字起こしを行う完全自動モードです：
+```powershell
+python audio_transcriber.py --record-screen
+```
+あるいは、同梱の **`run_screen_recorder.bat`** をダブルクリックするだけでも起動できます。
+
+> [!WARNING]
+> **画面録画モードの注意（プライバシーについて）**
+> - 画面録画モードでは「デスクトップ全体」が録画されます。上に重なった別のウィンドウや、ポップアップ通知、個人チャットなどもすべて録画・解析されてしまいます。
+> - パスワードや個人情報が映り込まないよう十分ご注意ください。
+> - 会議などで必要な録画の許可を得た上でご利用ください。
+> - 本機能の利用には `ffmpeg` が必須となります。
 
 このプロジェクトが役に立ったら、Starを押してもらえると嬉しいです ⭐
 ---

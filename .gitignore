@@ -57,10 +57,12 @@ Thumbs.db
 *.ogg
 *.wma
 
-# Ignore extracted frame images and key slides
+# Extracted frames and outputs
 frames_*/
 key_slides/
-output/key_slides/
+output/
+screen_recordings/
+出力/
 
 # Ignore generated output files
 rich_minutes.md

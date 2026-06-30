@@ -651,7 +651,7 @@ Rules:
     # フルパイプライン実行
     # ============================================================
 
-    def run(self, video_path):
+    def run(self, video_path, provided_audio_path=None):
         """動画キースライド抽出のフルパイプラインを実行する。
 
         Args:
@@ -712,10 +712,14 @@ Rules:
         frames_dir = os.path.join(output_subdir, "frames_tmp")
 
         # ---- Step 1: 音声抽出 ----
-        audio_path = os.path.join(output_subdir, f"audio_{timestamp}.wav")
-        if not self.extract_audio_from_video(video_path, audio_path):
-            print("\nエラー: 動画からの音声抽出に失敗しました。")
-            return result
+        if provided_audio_path and os.path.exists(provided_audio_path):
+            audio_path = provided_audio_path
+            print("\n  ※ 事前録音された音声ファイルを使用します (動画からの抽出スキップ)")
+        else:
+            audio_path = os.path.join(output_subdir, f"audio_{timestamp}.wav")
+            if not self.extract_audio_from_video(video_path, audio_path):
+                print("\nエラー: 動画からの音声抽出に失敗しました。")
+                return result
         result["audio_path"] = audio_path
 
         # ---- Step 2: フレーム抽出 ----

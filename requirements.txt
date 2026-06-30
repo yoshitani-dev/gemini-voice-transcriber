@@ -4,3 +4,4 @@ fpdf2
 fastapi
 uvicorn
 python-multipart
+python-dotenv

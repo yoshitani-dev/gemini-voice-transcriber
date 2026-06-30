@@ -1,0 +1,50 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Executables
+        run: |
+          pyinstaller --name "Gemini_Web_Server" --onefile --add-data "templates;templates" web_server.py
+          pyinstaller --name "Gemini_CLI_Transcriber" --onefile audio_transcriber.py
+
+      - name: Prepare Release Archive
+        run: |
+          mkdir release_package
+          copy dist\Gemini_Web_Server.exe release_package\
+          copy dist\Gemini_CLI_Transcriber.exe release_package\
+          copy README.md release_package\
+          copy .env.example release_package\
+          Compress-Archive -Path release_package\* -DestinationPath Gemini-Voice-Transcriber-Windows.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Gemini-Voice-Transcriber-Windows.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -24,8 +24,14 @@ import argparse
 # 設定
 # ============================================================
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Gemini APIキー（環境変数 GEMINI_API_KEY が優先されます）
-API_KEY = ""
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # Geminiモデル
 GEMINI_MODEL = "gemini-3.5-flash"

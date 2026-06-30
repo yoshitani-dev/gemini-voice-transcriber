@@ -22,6 +22,12 @@ import time
 import threading
 import webbrowser
 import uvicorn
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 

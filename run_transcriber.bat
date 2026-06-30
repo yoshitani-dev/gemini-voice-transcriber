@@ -22,8 +22,8 @@ if "%~1"=="" (
     echo "%~x1" | findstr /i "\.mp4 \.avi \.mkv \.mov \.wmv \.flv \.webm" >nul
     if not errorlevel 1 (
         echo 【動画ファイルがドロップされました】
-        rem 10秒間入力がなければ自動でN（しない）を選択して進行
-        choice /C YN /T 10 /D N /M "キースライド（スライド画像）も抽出しますか？ [Y:する / N:しない（音声のみ）]"
+        rem 20秒間入力がなければ自動でN（しない）を選択して進行
+        choice /C YN /T 20 /D N /M "キースライド（スライド画像）も抽出しますか？ [Y:する / N:しない（音声のみ）]"
         if errorlevel 2 (
             echo.
             echo ＞ スライド抽出はスキップし、音声の文字起こしのみ行います。

@@ -89,7 +89,7 @@ class KeySlideExtractor:
     def __init__(self, api_key, model="gemini-3.5-flash",
                  frame_interval=60, max_key_slides=15,
                  analyze_max_frames=50, importance_threshold=50,
-                 dry_run=False, output_dir=None):
+                 dry_run=False, output_dir=None, skip_frame_analysis=False):
         self.api_key = api_key
         self.model = model
         self.frame_interval = frame_interval
@@ -97,6 +97,7 @@ class KeySlideExtractor:
         self.analyze_max_frames = analyze_max_frames
         self.importance_threshold = importance_threshold
         self.dry_run = dry_run
+        self.skip_frame_analysis = skip_frame_analysis
         self.output_dir = output_dir or os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "output"
         )
@@ -678,9 +679,12 @@ Rules:
         print("=" * 60)
         print(f"  動画: {video_filename}")
         print(f"  モデル: {self.model}")
-        print(f"  フレーム間隔: {self.frame_interval}秒")
-        print(f"  最大キースライド数: {self.max_key_slides}")
-        print(f"  解析最大フレーム数: {self.analyze_max_frames}")
+        if self.skip_frame_analysis:
+            print("  フレーム解析: [オフ] (音声の文字起こしのみ)")
+        else:
+            print(f"  フレーム間隔: {self.frame_interval}秒")
+            print(f"  最大キースライド数: {self.max_key_slides}")
+            print(f"  解析最大フレーム数: {self.analyze_max_frames}")
         if self.dry_run:
             print(f"  [注意] dry-runモード: APIは呼び出しません")
         print()
@@ -715,9 +719,11 @@ Rules:
         result["audio_path"] = audio_path
 
         # ---- Step 2: フレーム抽出 ----
-        frames = self.extract_frames(video_path, frames_dir)
-        if not frames:
-            print("\n警告: フレームを抽出できませんでした。音声の文字起こしのみ行います。")
+        frames = []
+        if not self.skip_frame_analysis:
+            frames = self.extract_frames(video_path, frames_dir)
+            if not frames:
+                print("\n警告: フレームを抽出できませんでした。音声の文字起こしのみ行います。")
 
         # ---- Step 3: 音声の文字起こし ----
         transcript_text = None

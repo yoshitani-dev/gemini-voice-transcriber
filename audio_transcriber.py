@@ -822,6 +822,7 @@ def main():
             analyze_max_frames=args.analyze_max_frames,
             dry_run=args.dry_run,
             output_dir=args.output_dir or OUTPUT_DIR,
+            skip_frame_analysis=not args.extract_key_slides,
         )
         result = extractor.run(video_path)
         if not result["success"]:

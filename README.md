@@ -26,6 +26,7 @@ Simply download the ZIP, extract it, and run the tool on Windows!
 ### ✨ Features
 - **Real-time System Audio Recording**: Captures computer internal audio using WASAPI loopback.
 - **High-accuracy AI Transcription**: Powered by Google's Gemini API (`gemini-3.5-flash` with automatic fallback to `gemini-2.0-flash`).
+- **🆕 Video Key Slide Extraction**: Automatically extracts important slides, charts, and documents from recorded videos using Gemini's vision capabilities.
 - **Filler Word Removal**: Automatically strips out filler words (e.g., "uhm", "uh", "like") and resolves hallucinated repetitions.
 - **Bilingual Web UI**: Easy-to-use browser interface with light/dark theme aesthetics and English/Japanese language toggle.
 - **Auto-generated PDFs**: Converts transcriptions into formatted PDF documents with AI-generated titles. 
@@ -36,6 +37,7 @@ Simply download the ZIP, extract it, and run the tool on Windows!
 #### Prerequisites
 - Windows 10/11
 - Python 3.9 or higher
+- ffmpeg (optional, required for video key slide extraction)
 
 #### Step 1: Install Dependencies
 Open PowerShell in the project directory and run:
@@ -85,6 +87,24 @@ For large audio files:
 python split_wav.py
 ```
 
+#### 4. 🆕 Video Key Slide Extraction
+Extract important slides and generate rich minutes from recorded meeting videos:
+```powershell
+# Basic usage
+python audio_transcriber.py --video meeting.mp4 --extract-key-slides
+
+# Custom settings
+python audio_transcriber.py --video meeting.mp4 --extract-key-slides --frame-interval 10 --max-key-slides 15
+
+# Dry-run (check frame extraction without API calls)
+python audio_transcriber.py --video meeting.mp4 --extract-key-slides --dry-run
+```
+
+**Output files:**
+- `key_slides/` — Extracted key slide images
+- `key_slides.json` — Structured analysis data for each slide
+- `rich_minutes.md` — Integrated minutes with slides and transcript
+
 If this project is useful, please consider giving it a star ⭐
 ---
 
@@ -100,6 +120,7 @@ PC初心者の方は、上記のボタンからZIPファイルをダウンロー
 ### ✨ 主な機能
 - **PCシステム音声録音**: WASAPIループバックを使用し、会議や動画の音声をクリアに直接録音。
 - **高精度AI文字起こし**: Googleの `gemini-3.5-flash` を使用（高負荷時は `gemini-2.0-flash` へ自動切り替え）。
+- **�᥆ 動画キースライド抽出**: 会議や授業の録画動画から、重要なスライド・チャート・資料をGeminiのAI解析で自動抽出。文字起こしと統合したリッチ議事録を生成。
 - **つなぎ言葉（フィラー）の自動除去**: 「えーっと」「あのー」などを自動で取り除き、同じ言葉が連続するループ現象（ハルシネーション）も自動で除去。
 - **日英バイリンガル Web UI**: ブラウザからボタン一つで録音・アップロード・文字起こしができる美しい操作画面。言語切り替えに対応。
 - **PDF自動出力**: 文字起こし結果から、AIが最適なタイトルを付けてフォーマットされたPDFを出力。
@@ -110,6 +131,7 @@ PC初心者の方は、上記のボタンからZIPファイルをダウンロー
 #### 動作環境
 - Windows 10/11
 - Python 3.9 以上
+- ffmpeg（オプション、動画キースライド抽出に必要）
 
 #### 手順 1: ライブラリのインストール
 プロジェクトフォルダでPowerShellを開き、以下を実行します：
@@ -152,6 +174,26 @@ python web_server.py
 #### 3. バッチファイルから使う
 ダブルクリックするだけで簡単に起動できるバッチファイルも同梱しています：
 - `run_transcriber.bat` (ダブルクリックでPC音声の録音を開始。音声・動画ファイルをこのアイコンの上にドラッグ＆ドロップすると直接文字起こしを実行します)
+
+#### 4. 🆕 動画からキースライドを抽出する
+会議や授業の録画動画から、重要なスライドを抽出してリッチ議事録を生成します：
+```powershell
+# 基本的な使い方
+python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides
+
+# 詳細設定
+python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides --frame-interval 10 --max-key-slides 15
+
+# 動作確認（APIを呼ばずにフレーム抽出だけ確認）
+python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides --dry-run
+```
+
+**出力ファイル:**
+- `key_slides/` — 抽出されたキースライド画像
+- `key_slides.json` — 各スライドの構造化された解析データ
+- `rich_minutes.md` — スライドと文字起こしが統合されたリッチ議事録
+
+> ※ ffmpegが必要です。インストール: `winget install ffmpeg`
 
 このプロジェクトが役に立ったら、Starを押してもらえると嬉しいです ⭐
 ---

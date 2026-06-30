@@ -755,6 +755,25 @@ def main():
                         choices=["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
                         help="Geminiモデル")
 
+    # 動画キースライド抽出オプション
+    parser.add_argument("--video", default=None,
+                        help="動画ファイルのパス（キースライド抽出＋文字起こし）")
+    parser.add_argument("--extract-key-slides", action="store_true",
+                        help="動画からキースライドを抽出する")
+    parser.add_argument("--frame-interval", type=int, default=10,
+                        help="フレーム抽出間隔（秒）（デフォルト: 10）")
+    parser.add_argument("--max-key-slides", type=int, default=15,
+                        help="最大キースライド数（デフォルト: 15）")
+    parser.add_argument("--analyze-max-frames", type=int, default=60,
+                        help="解析する最大フレーム数（デフォルト: 60）")
+    parser.add_argument("--output-format", default="md",
+                        choices=["md", "json"],
+                        help="出力フォーマット（デフォルト: md）")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Gemini APIを呼ばず、フレーム抽出だけ確認する")
+    parser.add_argument("--output-dir", default=None,
+                        help="出力先ディレクトリ（デフォルト: output/）")
+
     args = parser.parse_args()
 
     if args.model:
@@ -783,7 +802,33 @@ def main():
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # モード分岐
-    if args.audio_file:
+    if args.video or args.extract_key_slides:
+        # === 動画キースライド抽出モード ===
+        video_path = args.video or args.audio_file
+        if not video_path:
+            print("エラー: --video で動画ファイルを指定してください。")
+            sys.exit(1)
+        video_path = os.path.abspath(video_path)
+        if not os.path.exists(video_path):
+            print(f"ファイルが見つかりません: {video_path}")
+            sys.exit(1)
+
+        from key_slide_extractor import KeySlideExtractor
+        extractor = KeySlideExtractor(
+            api_key=api_key,
+            model=GEMINI_MODEL,
+            frame_interval=args.frame_interval,
+            max_key_slides=args.max_key_slides,
+            analyze_max_frames=args.analyze_max_frames,
+            dry_run=args.dry_run,
+            output_dir=args.output_dir or OUTPUT_DIR,
+        )
+        result = extractor.run(video_path)
+        if not result["success"]:
+            sys.exit(1)
+        return
+
+    elif args.audio_file:
         # 既存ファイルを文字起こし
         audio_filepath = os.path.abspath(args.audio_file)
         if not os.path.exists(audio_filepath):

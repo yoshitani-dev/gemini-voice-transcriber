@@ -42,6 +42,30 @@ Thumbs.db
 .DS_Store
 
 # Project specific exclusions
+# Ignore video and audio files
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.wmv
+*.flv
+*.webm
+*.mp3
+*.wav
+*.m4a
+*.flac
+*.ogg
+*.wma
+
+# Ignore extracted frame images and key slides
+frames_*/
+key_slides/
+output/key_slides/
+
+# Ignore generated output files
+rich_minutes.md
+key_slides.json
+
 # Ignore all transcribed files and audio recordings, but keep the directory structure
 output/*
 !output/.gitkeep

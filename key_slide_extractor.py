@@ -383,12 +383,12 @@ Rules:
             frame["analysis"] = result
 
             if result["importance_score"] == 0 and result["reason"] == "analysis failed or skipped":
-                print("⏭ skipped")
+                print(" [スキップ]")
                 skipped += 1
             elif result["is_key_slide"]:
-                print(f"✅ score={result['importance_score']} type={result['frame_type']}")
+                print(f" [OK] score={result['importance_score']} type={result['frame_type']}")
             else:
-                print(f"❌ score={result['importance_score']}")
+                print(f" [NG] score={result['importance_score']}")
 
             analyzed.append(frame)
 
@@ -673,7 +673,7 @@ Rules:
 
         print()
         print("=" * 60)
-        print("  🎬 動画キースライド抽出モード")
+        print("  [動画キースライド抽出モード]")
         print("=" * 60)
         print(f"  動画: {video_filename}")
         print(f"  モデル: {self.model}")
@@ -681,7 +681,7 @@ Rules:
         print(f"  最大キースライド数: {self.max_key_slides}")
         print(f"  解析最大フレーム数: {self.analyze_max_frames}")
         if self.dry_run:
-            print(f"  ⚠ dry-runモード: APIは呼び出しません")
+            print(f"  [注意] dry-runモード: APIは呼び出しません")
         print()
 
         result = {
@@ -787,7 +787,7 @@ Rules:
         # ---- 完了メッセージ ----
         print()
         print("=" * 60)
-        print("  ✅ すべての処理が完了しました！")
+        print("  [完了] すべての処理が完了しました！")
         print("=" * 60)
         print(f"\n  出力フォルダ: {output_subdir}")
         if result["key_slides_count"] > 0:

@@ -17,7 +17,24 @@ if "%~1"=="" (
     echo.
     echo   処理するファイル: %~nx1
     echo.
-    python audio_transcriber.py "%~1"
+    
+    rem 動画ファイルかどうかの簡易判定
+    echo "%~x1" | findstr /i "\.mp4 \.avi \.mkv \.mov \.wmv \.flv \.webm" >nul
+    if not errorlevel 1 (
+        echo 【動画ファイルがドロップされました】
+        choice /C YN /M "キースライド（スライド画像）も抽出しますか？ [Y:する / N:しない（音声のみ）]"
+        if errorlevel 2 (
+            echo.
+            echo ＞ スライド抽出はスキップし、音声の文字起こしのみ行います。
+            python audio_transcriber.py --video "%~1"
+        ) else (
+            echo.
+            echo ＞ スライド抽出と音声の文字起こしを行います。
+            python audio_transcriber.py --video "%~1" --extract-key-slides
+        )
+    ) else (
+        python audio_transcriber.py "%~1"
+    )
 )
 
 echo.

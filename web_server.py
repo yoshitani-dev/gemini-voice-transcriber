@@ -62,7 +62,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # ============================================================
 
 @app.middleware("http")
-async def csrf_protection(request: Request, call_next):
+async def security_middleware(request: Request, call_next):
     # APIのPOSTリクエストに対してCSRF対策を実施
     if request.url.path.startswith("/api/") and request.method in ["POST", "PUT", "DELETE"]:
         origin = request.headers.get("origin")
@@ -83,7 +83,14 @@ async def csrf_protection(request: Request, call_next):
         if not origin and not referer:
             return JSONResponse({"error": "CSRF verification failed (No Origin/Referer)"}, status_code=403)
             
-    return await call_next(request)
+    response = await call_next(request)
+    
+    # クリックジャッキング等の防止用セキュリティヘッダー
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    
+    return response
 
 
 # ============================================================

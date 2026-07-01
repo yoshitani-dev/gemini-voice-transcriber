@@ -739,79 +739,12 @@ def generate_title_from_text(text, api_key):
 # 議事録生成
 # ============================================================
 
-def generate_minutes_from_text(text, api_key):
-    """文字起こしテキストから議事録（要約、決定事項、タスク等）を生成する"""
-    from google import genai
-    from google.genai import types as genai_types
-    import re
-
-    print("\n文字起こし内容から議事録を生成中...")
-    
-    # 試行するモデルの優先順位リスト
-    models_to_try = [GEMINI_MODEL]
-    if GEMINI_MODEL != "gemini-2.5-flash":
-        models_to_try.append("gemini-2.5-flash")
-    if "gemini-2.0-flash" not in models_to_try:
-        models_to_try.append("gemini-2.0-flash")
-
-    client = genai.Client(api_key=api_key)
-    prompt = """以下の文字起こしテキストを元に、分かりやすい議事録を作成してください。
-
-【構成の指定】
-以下の見出しを適宜用いて、テキスト形式で簡潔に整理してください。
-1. 会議の要約（Overview）
-2. 主な決定事項（Decisions）
-3. 次のアクション/タスク（Action Items）
-4. 重要なポイント・補足（Key Notes）
-
-出力はプレーンテキストとし、余計な挨拶やコメントは含めないでください。
-"""
-
-    for model in models_to_try:
-        try:
-            # thinkingモデル以外でthinking_configを渡すとエラーになるため分岐
-            if "thinking" in model:
-                gen_config = genai_types.GenerateContentConfig(
-                    thinking_config=genai_types.ThinkingConfig(thinking_budget=0)
-                )
-            else:
-                gen_config = genai_types.GenerateContentConfig()
-
-            try:
-                response = client.models.generate_content(
-                    model=model,
-                    contents=[prompt, text],
-                    config=gen_config,
-                )
-            except Exception:
-                # configパラメータに対応していない古いモデル向け
-                response = client.models.generate_content(
-                    model=model,
-                    contents=[prompt, text],
-                )
-
-            minutes_text = ""
-            if hasattr(response, "text"):
-                minutes_text = response.text
-            elif response.candidates and response.candidates[0].content.parts:
-                parts_text = [p.text for p in response.candidates[0].content.parts if hasattr(p, "text")]
-                if parts_text:
-                    minutes_text = "".join(parts_text)
-
-            if minutes_text:
-                print(f"  議事録の生成に成功しました (モデル: {model})")
-                return minutes_text.strip()
-        except Exception as e:
-            print(f"  モデル {model} での議事録生成に失敗しました: {e}")
-
-    return "（議事録の生成に失敗しました）"
-
 
 # ============================================================
 # PDF生成
 # ============================================================
 
-def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", minutes_text="", key_slides=None):
+def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", key_slides=None):
     """文字起こしテキストをPDFとして出力する"""
     from fpdf import FPDF
 
@@ -922,32 +855,7 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
             pdf.line(10, pdf.get_y(), 200, pdf.get_y())
             pdf.ln(5)
 
-    # 議事録（要約）の出力
-    elif minutes_text:
-        if font_family == "Japanese":
-            pdf.set_font("Japanese", "B", size=14)
-            pdf.cell(0, 10, "【 議事録 (Summary & Minutes) 】", new_x="LMARGIN", new_y="NEXT")
-        else:
-            pdf.set_font("Helvetica", "B", size=14)
-            pdf.cell(0, 10, "[ Summary & Minutes ]", new_x="LMARGIN", new_y="NEXT")
-            
-        pdf.ln(2)
-        pdf.set_font(font_family, "", size=PDF_FONT_SIZE)
-        for para in minutes_text.split("\n"):
-            if para.strip() == "":
-                pdf.ln(4)
-            else:
-                if font_family == "Helvetica":
-                    para_clean = para.strip().encode("latin-1", errors="replace").decode("latin-1")
-                    pdf.multi_cell(0, PDF_LINE_HEIGHT, para_clean)
-                else:
-                    pdf.multi_cell(0, PDF_LINE_HEIGHT, para.strip(), wrapmode="CHAR")
-                pdf.ln(1)
-        
-        pdf.ln(8)
-        pdf.set_draw_color(200, 200, 200)
-        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-        pdf.ln(8)
+
 
     # 全文字起こしのヘッダー
     if font_family == "Japanese":
@@ -1211,9 +1119,6 @@ def main():
         print("文字起こし結果が空です。音声が含まれていない可能性があります。")
         sys.exit(1)
 
-    # 議事録の生成
-    minutes_text = generate_minutes_from_text(full_text, api_key)
-
     # タイトルの自動生成
     title_name = generate_title_from_text(full_text, api_key)
     # ファイル名用のクリーンアップ（念のため）
@@ -1224,19 +1129,15 @@ def main():
 
     # 結果を表示
     print("\n" + "=" * 50)
-    print("議事録 (Summary & Minutes):")
-    print("=" * 50)
-    print(minutes_text)
-    print("\n" + "-" * 50)
     print("文字起こし結果:")
-    print("-" * 50)
+    print("=" * 50)
     print(full_text)
     print("-" * 50)
 
     # PDF生成
     pdf_filename = f"{title_name}_{timestamp}.pdf"
     pdf_filepath = os.path.join(OUTPUT_DIR, pdf_filename)
-    create_pdf(full_text, timestamped_text, pdf_filepath, audio_filename=audio_filename, minutes_text=minutes_text)
+    create_pdf(full_text, timestamped_text, pdf_filepath, audio_filename=audio_filename)
 
     # 完了
     print("\n" + "=" * 50)

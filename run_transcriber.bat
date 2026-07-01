@@ -29,8 +29,8 @@ if "%~1"=="" (
             echo ＞ 抽出オプションが指定されているため、確認をスキップしてスライド抽出を行います。
             python audio_transcriber.py --video "%~1" --extract-key-slides
         ) else (
-            rem 20秒間入力がなければ自動でN（しない）を選択して進行
-            choice /C YN /T 20 /D N /M "キースライド（スライド画像）も抽出しますか？ [Y:する / N:しない（音声のみ）]"
+            rem 2分間入力がなければ自動でN（しない）を選択して進行
+            choice /C YN /T 120 /D N /M "キースライド（スライド画像）も抽出しますか？ [Y:する / N:しない（音声のみ）]"
             if errorlevel 2 (
                 echo.
                 echo ＞ スライド抽出はスキップし、音声の文字起こしのみ行います。

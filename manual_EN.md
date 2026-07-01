@@ -136,9 +136,8 @@ Once processing completes, files are saved in the **`output`** folder:
 ## 5. Troubleshooting Checklist
 
 ### ❌ Error: "API Key not set"
-- Did you run `setx GEMINI_API_KEY "..."`?
-- Did you **restart** the PowerShell window / Batch file after setting the key?
-- Are the double quotes `"` around the key correct?
+- Did you enter and save the API key correctly when prompted?
+- Are there any extra spaces in the key?
 
 ### ❌ Error: "No loopback device found"
 - Are your PC speakers or headphones plugged in and working?

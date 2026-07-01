@@ -119,7 +119,27 @@ If you already have audio/video files (mp3, wav, m4a, mp4, etc.):
 
 ---
 
-## 4. Output Files
+## 4. 🌟 Video Frame Analysis (Key Slide Extraction)
+
+The AI can automatically extract **"Key Slides" (important scenes/charts)** from video files or screen recordings, summarizing them alongside the audio transcript to create a "Rich Minutes" markdown document. *Note: This feature is currently NOT available via the browser Web UI.*
+
+### Option A: Extract from an Existing Video File
+**Drag and drop** a video file (`.mp4`, `.webm`, etc.) onto the **`run_transcriber.bat`** icon.
+A black command prompt window will open and ask:
+`キースライド（スライド画像）も抽出しますか？ [Y:する / N:しない（音声のみ）]` (Do you want to extract key slides? [Y:Yes / N:No])
+Press **Y** on your keyboard to start the fully automated slide extraction and audio transcription!
+
+### Option B: Record Screen and Extract Automatically (Best for Web Meetings)
+Double-click **`run_screen_recorder.bat`**.
+Follow the on-screen instructions (press `Y`, then `Enter`) to start recording both your PC screen and audio simultaneously.
+Press `Enter` again when the meeting is over. The AI will scan the recorded video, find all important slides, and generate a Rich Minutes document linking the slides with the transcript.
+
+> [!NOTE]
+> When using the Slide Extraction feature, the output will be a `rich_minutes.md` (Markdown format) file and a folder containing the extracted slide images, instead of a PDF file.
+
+---
+
+## 5. Output Files
 
 Once processing completes, files are saved in the **`output`** folder:
 

@@ -804,8 +804,7 @@ Rules:
                     output_filepath=pdf_path,
                     audio_filename=video_filename,
                     minutes_text="",
-                    key_slides=key_slides,
-                    slides_dir=os.path.join(output_subdir, "key_slides")
+                    key_slides=key_slides
                 )
                 result["pdf_path"] = pdf_path
             except Exception as e:

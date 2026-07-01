@@ -811,7 +811,7 @@ def generate_minutes_from_text(text, api_key):
 # PDF生成
 # ============================================================
 
-def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", minutes_text="", key_slides=None, slides_dir=""):
+def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", minutes_text="", key_slides=None):
     """文字起こしテキストをPDFとして出力する"""
     from fpdf import FPDF
 
@@ -1082,19 +1082,6 @@ def main():
         result = extractor.run(video_path)
         if not result["success"]:
             sys.exit(1)
-            
-        # スライド抽出なしの場合は、PDFの文字起こしも出力する（仕様の整合性のため）
-        if not args.extract_key_slides and result.get("transcript_text"):
-            full_text = result["transcript_text"]
-            audio_filename = os.path.basename(result.get("audio_path", video_path))
-            title_name = generate_title_from_text(full_text, api_key)
-            import re
-            title_name = re.sub(r'[\\/:*?"<>|]', '', title_name).strip() or "文字起こし結果"
-            
-            pdf_filename = f"{title_name}_{timestamp}.pdf"
-            pdf_filepath = os.path.join(args.output_dir or OUTPUT_DIR, pdf_filename)
-            create_pdf(full_text, "", pdf_filepath, audio_filename=audio_filename)
-            print(f"\n  PDF:  {pdf_filename}")
             
         return
 

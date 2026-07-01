@@ -1021,14 +1021,11 @@ def main():
             print("  - 通知や個人的なチャット画面を閉じておくこと")
             print("  - 会議などで必要な録画の許可を得ていること")
             print("  - 上に重なった別のウィンドウも一緒に録画されてしまいます\n")
-            if not sys.stdin.isatty():
-                print("  [非対話環境] 自動的に同意したものとして画面録画を開始します。")
-                ans = 'y'
-            else:
-                try:
-                    ans = input("  上記に同意して画面録画を開始しますか？ [y: 開始する / n: キャンセル] (デフォルト: n): ")
-                except EOFError:
-                    ans = 'n'
+            try:
+                ans = input("  上記に同意して画面録画を開始しますか？ [y: 開始する / n: キャンセル] (デフォルト: n): ")
+            except EOFError:
+                ans = 'n'
+            
             if ans.lower() != 'y':
                 print("録画をキャンセルしました。")
                 sys.exit(0)
@@ -1049,10 +1046,7 @@ def main():
         print()
 
         try:
-            if not sys.stdin.isatty():
-                print(">>> [非対話環境] 自動で録音・録画を開始します...")
-            else:
-                input(">>> Enterキーを押して開始...")
+            input(">>> Enterキーを押して開始...")
         except KeyboardInterrupt:
             print("\n中止しました。")
             sys.exit(0)
@@ -1067,11 +1061,7 @@ def main():
         recorder.start_recording()
 
         try:
-            if not sys.stdin.isatty():
-                while True:
-                    time.sleep(1)
-            else:
-                input()
+            input()
         except (KeyboardInterrupt, EOFError):
             pass
 

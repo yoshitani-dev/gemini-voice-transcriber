@@ -45,7 +45,7 @@ Simply download the ZIP, extract it, and run the tool on Windows!
 
 1. Download the ZIP file (`Gemini-Voice-Transcriber-Windows.zip`) from the **Releases (Assets)** section.
 2. Extract the downloaded ZIP file.
-3. Double-click **`run_transcriber.bat`** to start the application. (If you want to record the screen and extract key slides, double-click **`run_screen_recorder.bat`** instead). (You can also drag and drop audio/video files directly onto it for automatic transcription.)
+3. Double-click **Start_Transcriber.bat** to start the application. (You can also drag and drop audio/video files directly onto it for automatic transcription.)
 
 #### 2. For Developers (From Source)
 
@@ -128,8 +128,7 @@ PC初心者の方は、上記のボタンからZIPファイルをダウンロー
 
 1. **Releases** の Assets から ZIPファイル（`Gemini-Voice-Transcriber-Windows.zip`）をダウンロードします。
 2. ダウンロードした ZIPファイルを解凍（展開）します。
-3. フォルダ内にある **`run_transcriber.bat`** をダブルクリックするだけで起動します。
-   （※画面録画とスライド抽出を行いたい場合は、**`run_screen_recorder.bat`** をダブルクリックしてください）
+3. フォルダ内にある **Start_Transcriber.bat** をダブルクリックするだけで起動します。
    （音声・動画ファイルをこのアイコンの上にドラッグ＆ドロップすると、直接文字起こしを実行することもできます）
 
 #### 2. 開発者向け（ソースコードから実行）

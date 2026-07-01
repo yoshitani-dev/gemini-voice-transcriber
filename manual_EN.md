@@ -94,7 +94,7 @@ A black command prompt window will open and ask:
 Press **Y** on your keyboard to start the fully automated slide extraction and audio transcription!
 
 ### Option B: Record Screen and Extract Automatically (Best for Web Meetings)
-Double-click **`run_screen_recorder.bat`**.
+Double-click **`Start_Transcriber.bat`**.
 Follow the on-screen instructions (press `Y`, then `Enter`) to start recording both your PC screen and audio simultaneously.
 Press `Enter` again when the meeting is over. The AI will scan the recorded video, find all important slides, and generate a Rich Minutes document linking the slides with the transcript.
 

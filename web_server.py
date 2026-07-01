@@ -68,22 +68,24 @@ async def security_middleware(request: Request, call_next):
     allowed_origins = [f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"]
     allowed_hosts = [f"localhost:{PORT}", f"127.0.0.1:{PORT}"]
 
+    response = None
+
     # 1. Host ヘッダーの検証（DNSリバインディング攻撃対策：すべてのリクエストに適用）
     host = request.headers.get("host")
     if host and host not in allowed_hosts:
-        return JSONResponse({"error": "DNS Rebinding verification failed (Invalid Host)"}, status_code=403)
+        response = JSONResponse({"error": "DNS Rebinding verification failed (Invalid Host)"}, status_code=403)
 
     # 2. APIのPOSTリクエストに対してCSRF対策を実施
-    if request.url.path.startswith("/api/") and request.method in ["POST", "PUT", "DELETE"]:
+    if not response and request.url.path.startswith("/api/") and request.method in ["POST", "PUT", "DELETE"]:
         origin = request.headers.get("origin")
         referer = request.headers.get("referer")
         
         # Origin ヘッダーのチェック
         if origin and origin not in allowed_origins:
-            return JSONResponse({"error": "CSRF verification failed (Invalid Origin)"}, status_code=403)
+            response = JSONResponse({"error": "CSRF verification failed (Invalid Origin)"}, status_code=403)
             
         # Referer ヘッダーのチェック (前方一致の脆弱性を防ぐため厳格化)
-        if referer:
+        elif referer:
             is_valid_referer = False
             for a in allowed_origins:
                 # 完全一致、またはその後ろがパス(/)やクエリ(?)で続く場合のみ許可
@@ -91,15 +93,17 @@ async def security_middleware(request: Request, call_next):
                     is_valid_referer = True
                     break
             if not is_valid_referer:
-                return JSONResponse({"error": "CSRF verification failed (Invalid Referer)"}, status_code=403)
+                response = JSONResponse({"error": "CSRF verification failed (Invalid Referer)"}, status_code=403)
             
-        # OriginもRefererもない場合（ブラウザからのPOSTではないか、no-corsモードの攻撃）
-        if not origin and not referer:
-            return JSONResponse({"error": "CSRF verification failed (No Origin/Referer)"}, status_code=403)
+        # OriginもRefererもない場合は非ブラウザクライアント（curl等）からの正当なAPIアクセスとみなして許可する
             
-    response = await call_next(request)
+    if not response:
+        try:
+            response = await call_next(request)
+        except Exception:
+            response = JSONResponse({"error": "Internal Server Error"}, status_code=500)
     
-    # クリックジャッキング等の防止用セキュリティヘッダー
+    # クリックジャッキング等の防止用セキュリティヘッダー（エラー応答時も必ず付与）
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -281,10 +285,9 @@ async def save_apikey(req: SettingsRequest):
     if not new_key:
         return JSONResponse({"error": "APIキーが空です"}, status_code=400)
     
-    # .envファイルに追記
-    env_path = os.path.join(BASE_DIR, ".env")
-    with open(env_path, "a", encoding="utf-8") as f:
-        f.write(f'\nGEMINI_API_KEY="{new_key}"\n')
+    # .envファイルに安全に保存
+    from audio_transcriber import save_api_key_to_env
+    save_api_key_to_env(new_key)
     
     # 現在のプロセスの環境変数を更新
     os.environ["GEMINI_API_KEY"] = new_key

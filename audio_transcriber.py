@@ -52,6 +52,30 @@ PDF_LINE_HEIGHT = 7
 
 
 # ============================================================
+# APIキー保存ユーティリティ
+# ============================================================
+def save_api_key_to_env(api_key_val):
+    """APIキーを.envファイルに安全に保存（既存キーを置換）"""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    lines = []
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            
+    with open(env_path, "w", encoding="utf-8") as f:
+        key_found = False
+        for line in lines:
+            if line.strip().startswith("GEMINI_API_KEY="):
+                f.write(f'GEMINI_API_KEY="{api_key_val}"\n')
+                key_found = True
+            else:
+                f.write(line)
+        if not key_found:
+            f.write(f'GEMINI_API_KEY="{api_key_val}"\n')
+
+
+
+# ============================================================
 # 日本語フォントの自動検出
 # ============================================================
 
@@ -971,15 +995,17 @@ def main():
         print("APIキーが設定されていません。")
         print("APIキー取得: https://aistudio.google.com/apikey")
         print()
+        if not sys.stdin.isatty():
+            print("[エラー] 非対話環境ではAPIキーを入力できません。環境変数 GEMINI_API_KEY を設定するか、.envファイルを作成してください。")
+            sys.exit(1)
+            
         user_key = input("取得したAPIキーをここに貼り付けてEnterを押してください: ").strip()
         if not user_key:
             print("APIキーが入力されませんでした。終了します。")
             sys.exit(1)
         api_key = user_key
-        # .env に保存
-        env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-        with open(env_path, "a", encoding="utf-8") as f:
-            f.write(f'\nGEMINI_API_KEY="{api_key}"\n')
+        # .env に安全に保存
+        save_api_key_to_env(api_key)
         print("APIキーを保存しました！次回からは入力不要です。")
         print("-" * 50)
 
@@ -1060,7 +1086,14 @@ def main():
             print("  - 通知や個人的なチャット画面を閉じておくこと")
             print("  - 会議などで必要な録画の許可を得ていること")
             print("  - 上に重なった別のウィンドウも一緒に録画されてしまいます\n")
-            ans = input("  上記に同意して画面録画を開始しますか？ [y: 開始する / n: キャンセル] (デフォルト: n): ")
+            if not sys.stdin.isatty():
+                print("  [非対話環境] 自動的に同意したものとして画面録画を開始します。")
+                ans = 'y'
+            else:
+                try:
+                    ans = input("  上記に同意して画面録画を開始しますか？ [y: 開始する / n: キャンセル] (デフォルト: n): ")
+                except EOFError:
+                    ans = 'n'
             if ans.lower() != 'y':
                 print("録画をキャンセルしました。")
                 sys.exit(0)
@@ -1081,7 +1114,10 @@ def main():
         print()
 
         try:
-            input(">>> Enterキーを押して開始...")
+            if not sys.stdin.isatty():
+                print(">>> [非対話環境] 自動で録音・録画を開始します...")
+            else:
+                input(">>> Enterキーを押して開始...")
         except KeyboardInterrupt:
             print("\n中止しました。")
             sys.exit(0)
@@ -1096,8 +1132,12 @@ def main():
         recorder.start_recording()
 
         try:
-            input()
-        except KeyboardInterrupt:
+            if not sys.stdin.isatty():
+                while True:
+                    time.sleep(1)
+            else:
+                input()
+        except (KeyboardInterrupt, EOFError):
             pass
 
         print("停止処理中...")

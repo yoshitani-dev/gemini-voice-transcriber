@@ -990,7 +990,9 @@
         'error-recording-stop': '録音の停止に失敗しました: ',
         't-modal-title': '🔑 APIキーの設定',
         't-modal-desc': 'Gemini APIキーが設定されていません。初めて利用する場合は、<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>から無料のAPIキーを取得し、以下に入力してください。<br><br>※入力したキーはPC内（.env）に安全に保存されます。',
-        't-modal-save': '保存して始める'
+        't-modal-save': '保存して始める',
+        't-modal-saving': '保存中...',
+        'no-minutes': '(議事録は生成されませんでした)'
       },
       en: {
         'app-title': 'Audio Transcription',
@@ -1030,7 +1032,9 @@
         'error-recording-stop': 'Failed to stop recording: ',
         't-modal-title': '🔑 API Key Setup',
         't-modal-desc': 'Gemini API key is not configured. If this is your first time, please get a free API key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a> and enter it below.<br><br>*The key will be safely saved in your PC (.env file).',
-        't-modal-save': 'Save and Start'
+        't-modal-save': 'Save and Start',
+        't-modal-saving': 'Saving...',
+        'no-minutes': '(No minutes generated)'
       }
     };
 
@@ -1159,7 +1163,7 @@
       if (!key) return;
       
       apiKeySaveBtn.disabled = true;
-      apiKeySaveBtn.textContent = 'Saving...';
+      apiKeySaveBtn.textContent = translations[currentLang]['t-modal-saving'];
       
       try {
         const response = await fetch('/api/settings/apikey', {
@@ -1390,12 +1394,12 @@
           if (data.minutes_text) {
             dom.accordionMinutesContent.textContent = data.minutes_text;
           } else {
-            dom.accordionMinutesContent.textContent = '(議事録は生成されませんでした)';
+            dom.accordionMinutesContent.textContent = translations[currentLang]['no-minutes'];
           }
           if (data.full_text) {
             dom.accordionFulltextContent.textContent = data.full_text;
           } else {
-            dom.accordionFulltextContent.textContent = '(テキストなし)';
+            dom.accordionFulltextContent.textContent = translations[currentLang]['no-text'];
           }
 
           // 文字起こし完了時に自動でダウンロードを実行

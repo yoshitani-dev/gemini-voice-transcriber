@@ -894,14 +894,14 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
             pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
             pdf.set_font(font_family, "", size=PDF_FONT_SIZE)
             
-            # 画像の挿入
-            saved_filename = slide.get("saved_filename")
-            if saved_filename and slides_dir:
-                img_path = os.path.join(slides_dir, saved_filename)
-                if os.path.exists(img_path):
-                    # 横幅150mmで挿入
-                    pdf.image(img_path, w=150)
-                    pdf.ln(5)
+            # 画像の挿入（ユーザー要望により廃止）
+            # saved_filename = slide.get("saved_filename")
+            # if saved_filename and slides_dir:
+            #     img_path = os.path.join(slides_dir, saved_filename)
+            #     if os.path.exists(img_path):
+            #         # 横幅150mmで挿入
+            #         pdf.image(img_path, w=150)
+            #         pdf.ln(5)
             
             # 解析結果
             pdf.set_text_color(80, 80, 80)

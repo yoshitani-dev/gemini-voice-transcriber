@@ -75,9 +75,16 @@ async def security_middleware(request: Request, call_next):
         if origin and origin not in allowed_origins:
             return JSONResponse({"error": "CSRF verification failed (Invalid Origin)"}, status_code=403)
             
-        # Referer ヘッダーのチェック
-        if referer and not any(referer.startswith(a) for a in allowed_origins):
-            return JSONResponse({"error": "CSRF verification failed (Invalid Referer)"}, status_code=403)
+        # Referer ヘッダーのチェック (前方一致の脆弱性を防ぐため厳格化)
+        if referer:
+            is_valid_referer = False
+            for a in allowed_origins:
+                # 完全一致、またはその後ろがパス(/)やクエリ(?)で続く場合のみ許可
+                if referer == a or referer.startswith(a + "/") or referer.startswith(a + "?"):
+                    is_valid_referer = True
+                    break
+            if not is_valid_referer:
+                return JSONResponse({"error": "CSRF verification failed (Invalid Referer)"}, status_code=403)
             
         # OriginもRefererもない場合（ブラウザからのPOSTではないか、no-corsモードの攻撃）
         if not origin and not referer:

@@ -1,7 +1,8 @@
 # 🎙️ Gemini Voice Transcriber — User Manual
 
 > This manual is designed for users of all technical levels.
-> Follow these steps in order to get the tool up and running on your Windows PC.
+> **Simply download, extract, and start using it right away!**
+> Follow these steps to get the tool up and running on your Windows PC.
 
 ---
 
@@ -33,36 +34,9 @@ PC Audio → Auto Recording → Gemini AI Transcription → Formatted PDF Saved!
 ## 1. Initial Setup (First Time Only)
 
 > [!IMPORTANT]
-> You only need to perform these steps **once**. It takes about 10 minutes.
+> You only need to perform these steps **once**. It takes about 5 minutes.
 
-### STEP 1: Install Python (If not already installed)
-
-1. Open your browser and go to:  
-   👉 **https://www.python.org/downloads/**
-2. Click the yellow **"Download Python 3.x.x"** button.
-3. Open the downloaded installer file.
-4. **⚠️ CRITICAL: Check the box "Add Python to PATH" at the bottom of the first screen!**  
-   *(If you miss this, the tool will not run.)*
-5. Click **"Install Now"** to begin the installation.
-6. Once finished, click "Close".
-
-### STEP 2: Install Required Dependencies
-
-1. Open File Explorer and go to the folder where you extracted this tool (where `run_transcriber.bat` is located).
-2. Click on the **address bar** at the top of the File Explorer window (showing the current path).
-3. Type **`powershell`** in lowercase and press **Enter**.  
-   👉 This opens a blue PowerShell terminal window directly pointing to your project folder!
-4. Copy the following command (Ctrl+C):
-   ```powershell
-   pip install -r requirements.txt
-   ```
-5. **Right-click** inside the PowerShell window to paste the command automatically.
-6. Press **Enter** to run the installation.
-   - Text will scroll down the screen. This is normal.
-   - Once it shows **`Successfully installed...`**, the process is complete.
-   - *(You can ignore any yellow warning messages about "A new release of pip is available".)*
-
-### STEP 3: Get a Gemini API Key
+### Get a Gemini API Key
 
 An API key is your personal password to access Google's Gemini AI.  
 > [!NOTE]
@@ -82,13 +56,11 @@ You will enter this API key directly into the application screen the very first 
 
 ---
 
----
-
 ## 2. Record and Transcribe PC Audio (Real-time)
 
 ### How to Start
 
-Double-click the **`run_transcriber.bat`** file!
+Double-click the **`Start_Transcriber.bat`** file!
 
 ### How to Record
 
@@ -100,11 +72,13 @@ A command prompt window will appear with the following message:
 3. **Press Enter again** when you want to stop recording.
 4. The tool will automatically save the audio, upload it to Gemini API, transcribe it, and generate a formatted PDF.
 
+---
+
 ## 3. Transcribe Existing Audio/Video Files
 
 If you already have audio/video files (mp3, wav, m4a, mp4, etc.):
 
-1. Drag and drop your audio or video file directly onto the **`run_transcriber.bat`** icon in File Explorer.
+1. Drag and drop your audio or video file directly onto the **`Start_Transcriber.bat`** icon in File Explorer.
 2. The transcription and PDF generation will start automatically.
 
 ---
@@ -112,8 +86,9 @@ If you already have audio/video files (mp3, wav, m4a, mp4, etc.):
 ## 4. 🌟 Video Frame Analysis (Key Slide Extraction)
 
 The AI can automatically extract **"Key Slides" (important scenes/charts)** from video files or screen recordings, summarizing them alongside the audio transcript to create a "Rich Minutes" markdown document. 
+
 ### Option A: Extract from an Existing Video File
-**Drag and drop** a video file (`.mp4`, `.webm`, etc.) onto the **`run_transcriber.bat`** icon.
+**Drag and drop** a video file (`.mp4`, `.webm`, etc.) onto the **`Start_Transcriber.bat`** icon.
 A black command prompt window will open and ask:
 `キースライド（スライド画像）も抽出しますか？ [Y:する / N:しない（音声のみ）]` (Do you want to extract key slides? [Y:Yes / N:No])
 Press **Y** on your keyboard to start the fully automated slide extraction and audio transcription!
@@ -165,4 +140,4 @@ You can share this tool simply by **sending the folder** (as a ZIP file) to othe
 - **No Configuration Needed**: The batch files automatically detect their paths, so they work out-of-the-box anywhere.
 - **Important Note**:
   - Delete files in the `output` folder before sharing to protect your privacy.
-  - **Do not share your API key**. Receivers must obtain and configure their own API keys (refer to STEP 3 & 4).
+  - **Do not share your API key**. Receivers must obtain and configure their own API keys (refer to Initial Setup).

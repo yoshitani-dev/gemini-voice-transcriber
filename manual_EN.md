@@ -24,8 +24,9 @@ PC Audio → Auto Recording → Gemini AI Transcription → Formatted PDF Saved!
 1. [Initial Setup (First Time Only)](#1-initial-setup-first-time-only)
 2. [Record and Transcribe PC Audio (Real-time)](#2-record-and-transcribe-pc-audio-real-time)
 3. [Transcribe Existing Audio/Video Files](#3-transcribe-existing-audiovideo-files)
-4. [Output Files](#4-output-files)
-5. [Troubleshooting Checklist](#5-troubleshooting-checklist)
+4. [Video Frame Analysis (Key Slide Extraction)](#4-video-frame-analysis-key-slide-extraction)
+5. [Output Files](#5-output-files)
+6. [Troubleshooting Checklist](#6-troubleshooting-checklist)
 
 ---
 
@@ -85,28 +86,19 @@ You will enter this API key directly into the application screen the very first 
 
 ## 2. Record and Transcribe PC Audio (Real-time)
 
-Use this method to record meetings, webinars, or videos in real-time.
-
 ### How to Start
 
 Double-click the **`run_transcriber.bat`** file!
 
-A local server will start, and a web page will automatically open in your browser (`http://localhost:8000`).
+### How to Record
 
-### Using the Web UI
+A command prompt window will appear with the following message:
+`>>> Enterキーを押して録音を開始...` (Press Enter to start recording...)
 
-1. Click the **"JP | EN"** language toggle in the top-right corner to switch the interface to English.
-2. Click the large **Microphone button** 🎙️ to start recording.
-3. Play the audio on your PC (start your video, meeting, etc.).
-4. Click the **Stop button** ⏹️ when finished.
-5. The tool will automatically:
-   - Save the raw audio.
-   - Upload it to Gemini API.
-   - Transcribe the audio and clean up filler words.
-   - Generate an AI title and create a formatted PDF.
-6. Click **"Download PDF"** to save your transcription!
-
----
+1. **Press Enter** to start recording 🔴.
+2. Play the audio on your PC (start your video, meeting, etc.).
+3. **Press Enter again** when you want to stop recording.
+4. The tool will automatically save the audio, upload it to Gemini API, transcribe it, and generate a formatted PDF.
 
 ## 3. Transcribe Existing Audio/Video Files
 
@@ -121,8 +113,7 @@ If you already have audio/video files (mp3, wav, m4a, mp4, etc.):
 
 ## 4. 🌟 Video Frame Analysis (Key Slide Extraction)
 
-The AI can automatically extract **"Key Slides" (important scenes/charts)** from video files or screen recordings, summarizing them alongside the audio transcript to create a "Rich Minutes" markdown document. *Note: This feature is currently NOT available via the browser Web UI.*
-
+The AI can automatically extract **"Key Slides" (important scenes/charts)** from video files or screen recordings, summarizing them alongside the audio transcript to create a "Rich Minutes" markdown document. 
 ### Option A: Extract from an Existing Video File
 **Drag and drop** a video file (`.mp4`, `.webm`, etc.) onto the **`run_transcriber.bat`** icon.
 A black command prompt window will open and ask:
@@ -153,7 +144,7 @@ Once processing completes, files are saved in the **`output`** folder:
 
 ---
 
-## 5. Troubleshooting Checklist
+## 6. Troubleshooting Checklist
 
 ### ❌ Error: "API Key not set"
 - Did you enter and save the API key correctly when prompted?

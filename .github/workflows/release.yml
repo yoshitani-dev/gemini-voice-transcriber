@@ -28,7 +28,6 @@ jobs:
 
       - name: Build Executables
         run: |
-          pyinstaller --name "Gemini_Web_Server" --onefile --add-data "templates;templates" web_server.py
           pyinstaller --name "Gemini_CLI_Transcriber" --onefile audio_transcriber.py
 
       - name: Download FFmpeg
@@ -39,7 +38,6 @@ jobs:
       - name: Prepare Release Archive
         run: |
           mkdir release_package
-          copy dist\Gemini_Web_Server.exe release_package\
           copy dist\Gemini_CLI_Transcriber.exe release_package\
           copy release_scripts\*.bat release_package\
           copy ffmpeg_extracted\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe release_package\

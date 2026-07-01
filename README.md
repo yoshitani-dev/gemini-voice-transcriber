@@ -28,7 +28,6 @@ Simply download the ZIP, extract it, and run the tool on Windows!
 - **High-accuracy AI Transcription**: Powered by Google's Gemini API (`gemini-3.5-flash` with automatic fallback to `gemini-2.0-flash`).
 - **🆕 Video Key Slide Extraction**: Automatically extracts important slides, charts, and documents from recorded videos using Gemini's vision capabilities.
 - **Filler Word Removal**: Automatically strips out filler words (e.g., "uhm", "uh", "like") and resolves hallucinated repetitions.
-- **Bilingual Web UI**: Easy-to-use browser interface with light/dark theme aesthetics and English/Japanese language toggle.
 - **Auto-generated PDFs**: Converts transcriptions into formatted PDF documents with AI-generated titles. 
 - **WAV Splitter Utility**: Built-in tool to split large audio files for smoother uploads.
 
@@ -55,14 +54,7 @@ pip install -r requirements.txt
 
 ### 🚀 Usage
 
-#### 1. Via Web Browser UI (Recommended)
-Launch the local web server:
-```powershell
-python web_server.py
-```
-Open `http://127.0.0.1:8000` in your browser. Click the microphone button to record, or upload an audio file to transcribe.
-
-#### 2. Via Command Line
+#### 1. Via Command Line
 - **Record and Transcribe**:
   ```powershell
   python audio_transcriber.py
@@ -76,13 +68,13 @@ Open `http://127.0.0.1:8000` in your browser. Click the microphone button to rec
   python audio_transcriber.py "audio.mp3" --language en
   ```
 
-#### 3. WAV Splitter
+#### 2. WAV Splitter
 For large audio files:
 ```powershell
 python split_wav.py
 ```
 
-#### 4. 🆕 Video Key Slide Extraction
+#### 3. 🆕 Video Key Slide Extraction
 Extract important slides and generate rich minutes from recorded meeting videos:
 ```powershell
 # Basic usage
@@ -100,7 +92,7 @@ python audio_transcriber.py --video meeting.mp4 --extract-key-slides --dry-run
 - `[AI_Title]_Datetime.md` — Integrated minutes with slides and transcript
 - `[AI_Title]_Datetime.pdf` — PDF version of the minutes with slide summaries
 
-#### 5. 🎥 Real-time Screen Recording & Auto Analysis
+#### 4. 🎥 Real-time Screen Recording & Auto Analysis
 You can record your PC screen and audio simultaneously, then automatically extract slides and transcribe the meeting:
 ```powershell
 python audio_transcriber.py --record-screen
@@ -130,7 +122,6 @@ PC初心者の方は、上記のボタンからZIPファイルをダウンロー
 - **高精度AI文字起こし**: Googleの `gemini-3.5-flash` を使用（高負荷時は `gemini-2.0-flash` へ自動切り替え）。
 - **�᥆ 動画キースライド抽出**: 会議や授業の録画動画から、重要なスライド・チャート・資料をGeminiのAI解析で自動抽出。文字起こしと統合したリッチ議事録を生成。
 - **つなぎ言葉（フィラー）の自動除去**: 「えーっと」「あのー」などを自動で取り除き、同じ言葉が連続するループ現象（ハルシネーション）も自動で除去。
-- **日英バイリンガル Web UI**: ブラウザからボタン一つで録音・アップロード・文字起こしができる美しい操作画面。言語切り替えに対応。
 - **PDF自動出力**: 文字起こし結果から、AIが最適なタイトルを付けてフォーマットされたPDFを出力。
 - **WAV分割機能**: 長時間の巨大な音声ファイルを自動で分割するユーティリティを内蔵。
 
@@ -164,7 +155,7 @@ python web_server.py
 ```
 起動後、ブラウザで `http://127.0.0.1:8000` を開きます。画面の「JP/EN」ボタンで言語が切り替わります。
 
-#### 2. コマンドライン（CUI）から使う
+#### 1. コマンドライン（CUI）から使う
 - **PC音声を録音して文字起こし**:
   ```powershell
   python audio_transcriber.py
@@ -174,11 +165,11 @@ python web_server.py
   python audio_transcriber.py "音声ファイルのパス.mp3"
   ```
 
-#### 3. バッチファイルから使う
+#### 2. バッチファイルから使う
 ダブルクリックするだけで簡単に起動できるバッチファイルも同梱しています：
 - `run_transcriber.bat` (ダブルクリックでPC音声の録音を開始。音声・動画ファイルをこのアイコンの上にドラッグ＆ドロップすると直接文字起こしを実行します)
 
-#### 4. 🆕 動画からキースライドを抽出する
+#### 3. 🆕 動画からキースライドを抽出する
 会議や授業の録画動画から、重要なスライドを抽出してリッチ議事録を生成します：
 ```powershell
 # 基本的な使い方
@@ -198,7 +189,7 @@ python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides --dry-
 
 > ※ ffmpegが必要です。インストール: `winget install ffmpeg`
 
-#### 5. 🎥 リアルタイム画面録画 ＆ 全自動解析
+#### 4. 🎥 リアルタイム画面録画 ＆ 全自動解析
 PC画面の録画と音声録音を同時に行い、終了後に自動でスライド抽出と文字起こしを行う完全自動モードです：
 ```powershell
 python audio_transcriber.py --record-screen
@@ -218,7 +209,6 @@ python audio_transcriber.py --record-screen
 
 
 ## 🗺️ Roadmap / 今後の予定
-- [ ] Add dark mode support to the Web UI / Web UIのダークモード対応
 - [ ] Support export as Markdown / Markdown形式での書き出しサポート
 - [ ] Real-time progressive transcription / リアルタイム順次文字起こし表示
 - [ ] Support macOS (CoreAudio) / macOSへの対応

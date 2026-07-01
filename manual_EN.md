@@ -60,7 +60,7 @@ You will enter this API key directly into the application screen the very first 
 
 ### How to Start
 
-Double-click the **`Start_Transcriber.bat`** file!
+Double-click the **`run_transcriber.bat`** file!
 
 ### How to Record
 
@@ -78,7 +78,7 @@ A command prompt window will appear with the following message:
 
 If you already have audio/video files (mp3, wav, m4a, mp4, etc.):
 
-1. Drag and drop your audio or video file directly onto the **`Start_Transcriber.bat`** icon in File Explorer.
+1. Drag and drop your audio or video file directly onto the **`run_transcriber.bat`** icon in File Explorer.
 2. The transcription and PDF generation will start automatically.
 
 ---
@@ -88,14 +88,14 @@ If you already have audio/video files (mp3, wav, m4a, mp4, etc.):
 The AI can automatically extract **"Key Slides" (important scenes/charts)** from video files or screen recordings, summarizing them alongside the audio transcript to create a "Rich Minutes" markdown document. 
 
 ### Option A: Extract from an Existing Video File
-**Drag and drop** a video file (`.mp4`, `.webm`, etc.) onto the **`Start_Transcriber.bat`** icon.
+**Drag and drop** a video file (`.mp4`, `.webm`, etc.) onto the **`run_transcriber.bat`** icon.
 A black command prompt window will open and ask:
 `キースライド（スライド画像）も抽出しますか？ [Y:する / N:しない（音声のみ）]` (Do you want to extract key slides? [Y:Yes / N:No])
 Press **Y** on your keyboard to start the fully automated slide extraction and audio transcription!
 
 ### Option B: Record Screen and Extract Automatically (Best for Web Meetings)
-Double-click **`Start_Transcriber.bat`**.
-Follow the on-screen instructions (press `Y`, then `Enter`) to start recording both your PC screen and audio simultaneously.
+Double-click **`run_screen_recorder.bat`**.
+A black command prompt window will open, and your PC screen and audio recording will start simultaneously.
 Press `Enter` again when the meeting is over. The AI will scan the recorded video, find all important slides, and generate a Rich Minutes document linking the slides with the transcript.
 
 > [!NOTE]

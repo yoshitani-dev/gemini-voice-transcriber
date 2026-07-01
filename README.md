@@ -97,8 +97,8 @@ python audio_transcriber.py --video meeting.mp4 --extract-key-slides --dry-run
 
 **Output files:**
 - `key_slides/` — Extracted key slide images
-- `key_slides.json` — Structured analysis data for each slide
 - `rich_minutes.md` — Integrated minutes with slides and transcript
+- `rich_minutes.pdf` — Integrated minutes with slides in PDF format
 
 #### 5. 🎥 Real-time Screen Recording & Auto Analysis
 You can record your PC screen and audio simultaneously, then automatically extract slides and transcribe the meeting:
@@ -193,8 +193,8 @@ python audio_transcriber.py --video 会議録画.mp4 --extract-key-slides --dry-
 
 **出力ファイル:**
 - `key_slides/` — 抽出されたキースライド画像
-- `key_slides.json` — 各スライドの構造化された解析データ
 - `rich_minutes.md` — スライドと文字起こしが統合されたリッチ議事録
+- `rich_minutes.pdf` — スライド画像が埋め込まれたPDF版議事録
 
 > ※ ffmpegが必要です。インストール: `winget install ffmpeg`
 

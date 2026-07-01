@@ -764,10 +764,11 @@ Rules:
             else:
                 print("\n  キースライドは検出されませんでした。")
 
-            # ---- Step 8: key_slides.json 生成 ----
-            json_path = os.path.join(output_subdir, "key_slides.json")
-            self.generate_key_slides_json(key_slides, json_path)
-            result["key_slides_json_path"] = json_path
+            # ---- Step 8: key_slides.json 生成 (ユーザー要望により廃止) ----
+            # json_path = os.path.join(output_subdir, "key_slides.json")
+            # self.generate_key_slides_json(key_slides, json_path)
+            # result["key_slides_json_path"] = json_path
+            result["key_slides_json_path"] = None
 
             # ---- Step 9: rich_minutes.md 生成 ----
             md_path = os.path.join(output_subdir, "rich_minutes.md")
@@ -776,6 +777,23 @@ Rules:
                 video_filename=video_filename,
             )
             result["rich_minutes_path"] = md_path
+
+            # ---- Step 10: PDF 生成 ----
+            from audio_transcriber import create_pdf
+            pdf_path = os.path.join(output_subdir, "rich_minutes.pdf")
+            try:
+                create_pdf(
+                    full_text=transcript_text or "",
+                    timestamped_text="",
+                    output_filepath=pdf_path,
+                    audio_filename=video_filename,
+                    minutes_text="",
+                    key_slides=key_slides,
+                    slides_dir=os.path.join(output_subdir, "key_slides")
+                )
+                result["pdf_path"] = pdf_path
+            except Exception as e:
+                print(f"\n  PDF生成に失敗しました: {e}")
         else:
             # フレームなしの場合でも文字起こし結果は保存
             md_path = os.path.join(output_subdir, "rich_minutes.md")

@@ -811,7 +811,7 @@ def generate_minutes_from_text(text, api_key):
 # PDF生成
 # ============================================================
 
-def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", minutes_text=""):
+def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", minutes_text="", key_slides=None, slides_dir=""):
     """文字起こしテキストをPDFとして出力する"""
     from fpdf import FPDF
 
@@ -821,10 +821,7 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
     font_family = "Japanese"
     
     if not font_path:
-        # 日本語文字が含まれているか確認 (Unicode範囲: 3000-30FF, 4E00-9FFF など)
-        # 簡易的に \u3000 以上の文字があるかで判定
         has_japanese = any(ord(c) >= 0x3000 for c in full_text)
-        
         if has_japanese:
             print("日本語フォントが見つかりません。テキストファイルとして保存します。")
             txt_path = output_filepath.replace(".pdf", ".txt")
@@ -845,7 +842,7 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
 
     pdf.add_page()
 
-    # タイトルとヘッダー情報（日本語/英語で切り替え）
+    # タイトルとヘッダー情報
     if font_family == "Japanese":
         pdf.set_font("Japanese", "B", size=18)
         pdf.cell(0, 15, "音声文字起こし", new_x="LMARGIN", new_y="NEXT", align="C")
@@ -856,7 +853,7 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
         now = datetime.datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
         pdf.cell(0, 6, f"作成日時: {now}", new_x="LMARGIN", new_y="NEXT")
         if audio_filename:
-            pdf.cell(0, 6, f"音声ファイル: {audio_filename}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 6, f"ソースファイル: {audio_filename}", new_x="LMARGIN", new_y="NEXT")
         pdf.cell(0, 6, f"モデル: {GEMINI_MODEL}", new_x="LMARGIN", new_y="NEXT")
     else:
         pdf.set_font("Helvetica", "B", size=18)
@@ -868,7 +865,7 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         pdf.cell(0, 6, f"Created: {now}", new_x="LMARGIN", new_y="NEXT")
         if audio_filename:
-            pdf.cell(0, 6, f"Audio File: {audio_filename}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 6, f"Source File: {audio_filename}", new_x="LMARGIN", new_y="NEXT")
         pdf.cell(0, 6, f"Model: {GEMINI_MODEL}", new_x="LMARGIN", new_y="NEXT")
         
     pdf.set_text_color(0, 0, 0)
@@ -878,8 +875,55 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(8)
 
+    # キースライド出力
+    if key_slides:
+        if font_family == "Japanese":
+            pdf.set_font("Japanese", "B", size=14)
+            pdf.cell(0, 10, "【 キースライド (Key Slides) 】", new_x="LMARGIN", new_y="NEXT")
+        else:
+            pdf.set_font("Helvetica", "B", size=14)
+            pdf.cell(0, 10, "[ Key Slides ]", new_x="LMARGIN", new_y="NEXT")
+            
+        pdf.ln(2)
+        pdf.set_font(font_family, "", size=PDF_FONT_SIZE)
+        
+        for i, slide in enumerate(key_slides):
+            analysis = slide.get("analysis", {})
+            title = f"Slide {i+1} - {slide['timestamp_str']}"
+            pdf.set_font(font_family, "B", size=11)
+            pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font(font_family, "", size=PDF_FONT_SIZE)
+            
+            # 画像の挿入
+            saved_filename = slide.get("saved_filename")
+            if saved_filename and slides_dir:
+                img_path = os.path.join(slides_dir, saved_filename)
+                if os.path.exists(img_path):
+                    # 横幅150mmで挿入
+                    pdf.image(img_path, w=150)
+                    pdf.ln(5)
+            
+            # 解析結果
+            pdf.set_text_color(80, 80, 80)
+            score = analysis.get('importance_score', 0)
+            pdf.cell(0, 6, f"重要度: {score}/100", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(0, 0, 0)
+            
+            summary = analysis.get('summary', '')
+            if summary:
+                pdf.ln(2)
+                for line in summary.split("\n"):
+                    if font_family == "Helvetica":
+                        line = line.encode("latin-1", errors="replace").decode("latin-1")
+                    pdf.multi_cell(0, PDF_LINE_HEIGHT, line, wrapmode="CHAR" if font_family == "Japanese" else "WORD")
+            
+            pdf.ln(5)
+            pdf.set_draw_color(220, 220, 220)
+            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+            pdf.ln(5)
+
     # 議事録（要約）の出力
-    if minutes_text:
+    elif minutes_text:
         if font_family == "Japanese":
             pdf.set_font("Japanese", "B", size=14)
             pdf.cell(0, 10, "【 議事録 (Summary & Minutes) 】", new_x="LMARGIN", new_y="NEXT")
@@ -922,7 +966,6 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
             pdf.ln(4)
         else:
             if font_family == "Helvetica":
-                # latin-1でエンコードできない文字を?に置き換えてクラッシュを防ぐ
                 para_clean = para.strip().encode("latin-1", errors="replace").decode("latin-1")
                 pdf.multi_cell(0, PDF_LINE_HEIGHT, para_clean)
             else:

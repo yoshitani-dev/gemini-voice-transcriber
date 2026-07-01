@@ -42,6 +42,8 @@ jobs:
           copy release_scripts\*.bat release_package\
           copy ffmpeg_extracted\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe release_package\
           copy ffmpeg_extracted\ffmpeg-master-latest-win64-gpl\bin\ffprobe.exe release_package\
+          copy manual.pdf release_package\
+          copy manual_EN.pdf release_package\
           copy README.md release_package\
           copy .env.example release_package\
           Compress-Archive -Path release_package\* -DestinationPath Gemini-Voice-Transcriber-Windows.zip

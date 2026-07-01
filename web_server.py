@@ -63,13 +63,19 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
-    # APIのPOSTリクエストに対してCSRF対策を実施
+    # ローカルホストのアドレス一覧
+    allowed_origins = [f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"]
+    allowed_hosts = [f"localhost:{PORT}", f"127.0.0.1:{PORT}"]
+
+    # 1. Host ヘッダーの検証（DNSリバインディング攻撃対策：すべてのリクエストに適用）
+    host = request.headers.get("host")
+    if host and host not in allowed_hosts:
+        return JSONResponse({"error": "DNS Rebinding verification failed (Invalid Host)"}, status_code=403)
+
+    # 2. APIのPOSTリクエストに対してCSRF対策を実施
     if request.url.path.startswith("/api/") and request.method in ["POST", "PUT", "DELETE"]:
         origin = request.headers.get("origin")
         referer = request.headers.get("referer")
-        
-        # ローカルホストのアドレス一覧
-        allowed_origins = [f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"]
         
         # Origin ヘッダーのチェック
         if origin and origin not in allowed_origins:

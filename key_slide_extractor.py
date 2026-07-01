@@ -606,11 +606,11 @@ Rules:
                 lines.append(f"### Slide {i+1} — {slide['timestamp_str']}")
                 lines.append("")
 
-                # 画像の埋め込み（相対パス）
-                saved_filename = slide.get("saved_filename")
-                if saved_filename:
-                    lines.append(f"![Slide {i+1}](key_slides/{saved_filename})")
-                    lines.append("")
+                # 画像の埋め込み（ユーザー要望により廃止）
+                # saved_filename = slide.get("saved_filename")
+                # if saved_filename:
+                #     lines.append(f"![Slide {i+1}](key_slides/{saved_filename})")
+                #     lines.append("")
 
                 # 解析結果
                 lines.append(f"- **種類 / Type**: {analysis.get('frame_type', 'unknown')}")

@@ -596,6 +596,106 @@
       pointer-events: auto;
     }
 
+    /* ===== API Key Modal ===== */
+    #api-key-modal {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #api-key-modal.visible {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-content {
+      background: #FFFFFF;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 480px;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+
+    #api-key-modal.visible .modal-content {
+      transform: translateY(0);
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-desc {
+      font-size: 0.9rem;
+      color: #64748B;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .modal-desc a {
+      color: #3B82F6;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .modal-desc a:hover {
+      text-decoration: underline;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 1rem;
+      margin-bottom: 24px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .modal-input:focus {
+      border-color: #3B82F6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .modal-btn {
+      width: 100%;
+      background: #3B82F6;
+      color: #FFFFFF;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .modal-btn:hover {
+      background: #2563EB;
+    }
+
+    .modal-btn:disabled {
+      background: #94A3B8;
+      cursor: not-allowed;
+    }
+
     /* ===== Responsive ===== */
     @media (max-width: 600px) {
       #app-container {
@@ -678,6 +778,16 @@
   </style>
 </head>
 <body>
+  <!-- API Key Modal -->
+  <div id="api-key-modal">
+    <div class="modal-content">
+      <div class="modal-title" id="t-modal-title" data-i18n="t-modal-title">🔑 APIキーの設定</div>
+      <div class="modal-desc" id="t-modal-desc"></div>
+      <input type="password" id="api-key-input" class="modal-input" placeholder="AIzaSy...">
+      <button id="api-key-save-btn" class="modal-btn" data-i18n="t-modal-save">保存して始める</button>
+    </div>
+  </div>
+
   <main id="app-container">
     <!-- Language Selector -->
     <div id="lang-switcher">
@@ -878,6 +988,9 @@
         'step-msg-4': '処理を完了しています...',
         'error-recording-start': '録音の開始に失敗しました: ',
         'error-recording-stop': '録音の停止に失敗しました: ',
+        't-modal-title': '🔑 APIキーの設定',
+        't-modal-desc': 'Gemini APIキーが設定されていません。初めて利用する場合は、<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>から無料のAPIキーを取得し、以下に入力してください。<br><br>※入力したキーはPC内（.env）に安全に保存されます。',
+        't-modal-save': '保存して始める'
       },
       en: {
         'app-title': 'Audio Transcription',
@@ -915,6 +1028,9 @@
         'step-msg-4': 'Finalizing process...',
         'error-recording-start': 'Failed to start recording: ',
         'error-recording-stop': 'Failed to stop recording: ',
+        't-modal-title': '🔑 API Key Setup',
+        't-modal-desc': 'Gemini API key is not configured. If this is your first time, please get a free API key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a> and enter it below.<br><br>*The key will be safely saved in your PC (.env file).',
+        't-modal-save': 'Save and Start'
       }
     };
 
@@ -934,6 +1050,11 @@
           el.textContent = translations[lang][key];
         }
       });
+
+      // Update Modal
+      if (translations[lang] && translations[lang]['t-modal-desc']) {
+        document.getElementById('t-modal-desc').innerHTML = translations[lang]['t-modal-desc'];
+      }
       
       // Update dynamic elements
       updateDynamicLabels();
@@ -1015,6 +1136,52 @@
         throw error;
       }
     }
+
+    /* ===== API Key Logic ===== */
+    const apiKeyModal = document.getElementById('api-key-modal');
+    const apiKeyInput = document.getElementById('api-key-input');
+    const apiKeySaveBtn = document.getElementById('api-key-save-btn');
+
+    async function checkApiKey() {
+      try {
+        const response = await fetch('/api/settings/status');
+        const data = await response.json();
+        if (!data.api_key_configured) {
+          apiKeyModal.classList.add('visible');
+        }
+      } catch (err) {
+        console.error('API key status check failed:', err);
+      }
+    }
+
+    apiKeySaveBtn.addEventListener('click', async () => {
+      const key = apiKeyInput.value.trim();
+      if (!key) return;
+      
+      apiKeySaveBtn.disabled = true;
+      apiKeySaveBtn.textContent = 'Saving...';
+      
+      try {
+        const response = await fetch('/api/settings/apikey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: key })
+        });
+        
+        if (response.ok) {
+          apiKeyModal.classList.remove('visible');
+        } else {
+          const data = await response.json();
+          showError(data.error || 'APIキーの保存に失敗しました');
+          apiKeySaveBtn.disabled = false;
+          apiKeySaveBtn.textContent = translations[currentLang]['t-modal-save'];
+        }
+      } catch (err) {
+        showError('通信エラーが発生しました');
+        apiKeySaveBtn.disabled = false;
+        apiKeySaveBtn.textContent = translations[currentLang]['t-modal-save'];
+      }
+    });
 
     /* ===== Recording ===== */
     dom.recordButton.addEventListener('click', async () => {
@@ -1265,6 +1432,7 @@
       // Set initial language based on browser setting
       const userLang = (navigator.language || navigator.userLanguage).startsWith('ja') ? 'ja' : 'en';
       setLanguage(userLang);
+      checkApiKey();
 
       try {
         const data = await apiCall('/api/status');

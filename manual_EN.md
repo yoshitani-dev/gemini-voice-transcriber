@@ -74,18 +74,12 @@ An API key is your personal password to access Google's Gemini AI.
 3. Click the blue **"Create API key"** button.
 4. Select "Create API key in a new project" if prompted.
 5. A long code starting with `AIzaSy...` will be displayed. This is your API key.
-   - Click the **"Copy"** button and paste it into Windows "Notepad" temporarily.
+   - Click the **"Copy"** button and copy it.
 
-### STEP 4: Register the API Key to Your PC
+That's it for the preparation!
+You will enter this API key directly into the application screen the very first time you start it. Please keep it copied.
 
-1. In the blue PowerShell window from STEP 2, paste the following command:  
-   *(※ Replace `AIzaSy...` with your copied API key. Do not remove the double quotes `"` around it!)*
-   ```powershell
-   setx GEMINI_API_KEY "AIzaSy_YOUR_API_KEY_HERE"
-   ```
-2. Press Enter. You should see **`SUCCESS: Specified value was saved.`**.
-3. **⚠️ CRITICAL: Close the PowerShell window completely.**  
-   *(The new environment variable will not take effect in the current terminal; you must reopen it next time.)*
+---
 
 ---
 

@@ -49,12 +49,7 @@ pip install -r requirements.txt
 1. Go to [Google AI Studio](https://aistudio.google.com/apikey).
 2. Generate a free API key.
 
-#### Step 3: Set Environment Variable
-Register your API key to Windows:
-```powershell
-setx GEMINI_API_KEY "YOUR_API_KEY_HERE"
-```
-*Note: Restart your terminal/command prompt after running this command to apply the changes.*
+*(No complicated environment variable setup is required! You will be prompted to enter this key the first time you run the app.)*
 
 ---
 
@@ -156,12 +151,7 @@ pip install -r requirements.txt
 1. [Google AI Studio](https://aistudio.google.com/apikey) にアクセス。
 2. 無料のAPIキーを作成します。
 
-#### 手順 3: APIキーの登録
-WindowsにAPIキーを環境変数として登録します：
-```powershell
-setx GEMINI_API_KEY "取得したAPIキー"
-```
-*※設定後、設定を反映させるために一度PowerShellやコマンドプロンプトを閉じてください。*
+*(※難しい環境変数の設定は不要です！アプリを最初に起動したときに画面から入力できます。)*
 
 ---
 

@@ -967,14 +967,21 @@ def main():
     # APIキー確認
     api_key = os.environ.get("GEMINI_API_KEY", API_KEY).strip()
     if not api_key:
+        print("【初回セットアップ】")
         print("APIキーが設定されていません。")
+        print("APIキー取得: https://aistudio.google.com/apikey")
         print()
-        print("【設定方法】")
-        print("  PowerShellで以下を実行してください:")
-        print('  setx GEMINI_API_KEY "あなたのAPIキー"')
-        print()
-        print("  APIキー取得: https://aistudio.google.com/apikey")
-        sys.exit(1)
+        user_key = input("取得したAPIキーをここに貼り付けてEnterを押してください: ").strip()
+        if not user_key:
+            print("APIキーが入力されませんでした。終了します。")
+            sys.exit(1)
+        api_key = user_key
+        # .env に保存
+        env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+        with open(env_path, "a", encoding="utf-8") as f:
+            f.write(f'\nGEMINI_API_KEY="{api_key}"\n')
+        print("APIキーを保存しました！次回からは入力不要です。")
+        print("-" * 50)
 
     # 出力ディレクトリ作成
     os.makedirs(OUTPUT_DIR, exist_ok=True)

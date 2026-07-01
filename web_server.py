@@ -30,6 +30,7 @@ except ImportError:
 
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from pydantic import BaseModel
 
 # audio_transcriber.py から機能をインポート
 from audio_transcriber import (
@@ -260,6 +261,38 @@ async def get_status():
     }
 
 
+# ============================================================
+# APIキー設定エンドポイント
+# ============================================================
+
+class SettingsRequest(BaseModel):
+    api_key: str
+
+@app.get("/api/settings/status")
+async def get_settings_status():
+    """APIキーが設定されているか確認"""
+    api_key = os.environ.get("GEMINI_API_KEY", API_KEY).strip()
+    return {"api_key_configured": bool(api_key)}
+
+@app.post("/api/settings/apikey")
+async def save_apikey(req: SettingsRequest):
+    """APIキーを保存（.envファイルおよび環境変数）"""
+    new_key = req.api_key.strip()
+    if not new_key:
+        return JSONResponse({"error": "APIキーが空です"}, status_code=400)
+    
+    # .envファイルに追記
+    env_path = os.path.join(BASE_DIR, ".env")
+    with open(env_path, "a", encoding="utf-8") as f:
+        f.write(f'\nGEMINI_API_KEY="{new_key}"\n')
+    
+    # 現在のプロセスの環境変数を更新
+    os.environ["GEMINI_API_KEY"] = new_key
+    
+    return {"success": True, "message": "APIキーを保存しました"}
+
+
+
 @app.get("/api/result")
 async def get_result():
     """最新の文字起こし結果を返す"""
@@ -298,7 +331,7 @@ def _process_audio(audio_filepath, audio_filename, timestamp):
 
     api_key = os.environ.get("GEMINI_API_KEY", API_KEY).strip()
     if not api_key:
-        state.error = "APIキーが設定されていません。環境変数 GEMINI_API_KEY を設定してください。"
+        state.error = "APIキーが設定されていません。画面からAPIキーを設定してください。"
         state.status = "idle"
         return
 
@@ -372,15 +405,9 @@ if __name__ == "__main__":
     if not api_key:
         print("=" * 50)
         print("  [!] APIキーが設定されていません")
+        print("  ブラウザ画面が開いたら、画面の指示に従ってAPIキーを入力してください。")
         print("=" * 50)
         print()
-        print("  PowerShellで以下を実行してください:")
-        print('  setx GEMINI_API_KEY "あなたのAPIキー"')
-        print()
-        print("  APIキー取得: https://aistudio.google.com/apikey")
-        print()
-        input("Enterキーで終了...")
-        sys.exit(1)
 
     print("=" * 50)
     print("  Gemini Voice Transcriber")

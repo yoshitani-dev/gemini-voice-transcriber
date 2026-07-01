@@ -770,8 +770,21 @@ Rules:
             # result["key_slides_json_path"] = json_path
             result["key_slides_json_path"] = None
 
+            # ---- タイトル自動生成 ----
+            title_name = "リッチ議事録"
+            if transcript_text:
+                from audio_transcriber import generate_title_from_text
+                import re
+                print("\n  AIがタイトルを自動生成中...")
+                generated_title = generate_title_from_text(transcript_text, self.api_key)
+                if generated_title:
+                    title_name = re.sub(r'[\\/:*?"<>|]', '', generated_title).strip() or "リッチ議事録"
+            
+            timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            base_filename = f"{title_name}_{timestamp_str}"
+
             # ---- Step 9: rich_minutes.md 生成 ----
-            md_path = os.path.join(output_subdir, "rich_minutes.md")
+            md_path = os.path.join(output_subdir, f"{base_filename}.md")
             self.generate_rich_minutes(
                 key_slides, transcript_text or "", md_path,
                 video_filename=video_filename,
@@ -780,7 +793,7 @@ Rules:
 
             # ---- Step 10: PDF 生成 ----
             from audio_transcriber import create_pdf
-            pdf_path = os.path.join(output_subdir, "rich_minutes.pdf")
+            pdf_path = os.path.join(output_subdir, f"{base_filename}.pdf")
             try:
                 create_pdf(
                     full_text=transcript_text or "",
@@ -796,12 +809,40 @@ Rules:
                 print(f"\n  PDF生成に失敗しました: {e}")
         else:
             # フレームなしの場合でも文字起こし結果は保存
-            md_path = os.path.join(output_subdir, "rich_minutes.md")
+            # タイトル自動生成
+            title_name = "文字起こし結果"
+            if transcript_text:
+                from audio_transcriber import generate_title_from_text
+                import re
+                print("\n  AIがタイトルを自動生成中...")
+                generated_title = generate_title_from_text(transcript_text, self.api_key)
+                if generated_title:
+                    title_name = re.sub(r'[\\/:*?"<>|]', '', generated_title).strip() or "文字起こし結果"
+            
+            timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            base_filename = f"{title_name}_{timestamp_str}"
+
+            md_path = os.path.join(output_subdir, f"{base_filename}.md")
             self.generate_rich_minutes(
                 [], transcript_text or "", md_path,
                 video_filename=video_filename,
             )
             result["rich_minutes_path"] = md_path
+            
+            # PDFも出力しておく
+            from audio_transcriber import create_pdf
+            pdf_path = os.path.join(output_subdir, f"{base_filename}.pdf")
+            try:
+                create_pdf(
+                    full_text=transcript_text or "",
+                    timestamped_text="",
+                    output_filepath=pdf_path,
+                    audio_filename=video_filename,
+                    minutes_text=""
+                )
+                result["pdf_path"] = pdf_path
+            except Exception:
+                pass
 
         # ---- 一時フレームディレクトリの削除 ----
         if os.path.exists(frames_dir):

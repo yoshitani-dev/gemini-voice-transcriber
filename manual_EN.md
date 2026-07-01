@@ -135,7 +135,7 @@ Follow the on-screen instructions (press `Y`, then `Enter`) to start recording b
 Press `Enter` again when the meeting is over. The AI will scan the recorded video, find all important slides, and generate a Rich Minutes document linking the slides with the transcript.
 
 > [!NOTE]
-> When using the Slide Extraction feature, the AI will generate a **PDF with slide summaries** (`rich_minutes.pdf`), along with a Markdown version (`rich_minutes.md`).
+> When using the Slide Extraction feature, the AI will generate a **PDF with slide summaries** (`[AI_Title]_Datetime.pdf`), along with a Markdown version (`[AI_Title]_Datetime.md`).
 
 ---
 

@@ -650,11 +650,6 @@ def generate_title_from_text(text, api_key):
     if "gemini-2.0-flash" not in models_to_try:
         models_to_try.append("gemini-2.0-flash")
 
-    # thinking_config をオフにする設定 (thinkingモデル対応)
-    gen_config = genai_types.GenerateContentConfig(
-        thinking_config=genai_types.ThinkingConfig(thinking_budget=0)
-    )
-
     client = genai.Client(api_key=api_key)
     prompt = """以下の文字起こしテキストから、Windowsのファイル名として使える簡潔なタイトル（最大20文字程度、日本語）を1つ作成してください。
 日付や時刻を含める必要はありません。
@@ -667,6 +662,14 @@ def generate_title_from_text(text, api_key):
 
     for model in models_to_try:
         try:
+            # thinkingモデル以外でthinking_configを渡すとエラーになるため分岐
+            if "thinking" in model:
+                gen_config = genai_types.GenerateContentConfig(
+                    thinking_config=genai_types.ThinkingConfig(thinking_budget=0)
+                )
+            else:
+                gen_config = genai_types.GenerateContentConfig()
+
             try:
                 response = client.models.generate_content(
                     model=model,
@@ -727,11 +730,6 @@ def generate_minutes_from_text(text, api_key):
     if "gemini-2.0-flash" not in models_to_try:
         models_to_try.append("gemini-2.0-flash")
 
-    # thinking_config をオフにする設定 (thinkingモデル対応)
-    gen_config = genai_types.GenerateContentConfig(
-        thinking_config=genai_types.ThinkingConfig(thinking_budget=0)
-    )
-
     client = genai.Client(api_key=api_key)
     prompt = """以下の文字起こしテキストを元に、分かりやすい議事録を作成してください。
 
@@ -747,6 +745,14 @@ def generate_minutes_from_text(text, api_key):
 
     for model in models_to_try:
         try:
+            # thinkingモデル以外でthinking_configを渡すとエラーになるため分岐
+            if "thinking" in model:
+                gen_config = genai_types.GenerateContentConfig(
+                    thinking_config=genai_types.ThinkingConfig(thinking_budget=0)
+                )
+            else:
+                gen_config = genai_types.GenerateContentConfig()
+
             try:
                 response = client.models.generate_content(
                     model=model,
@@ -810,8 +816,8 @@ def create_pdf(full_text, timestamped_text, output_filepath, audio_filename="", 
     pdf.set_auto_page_break(auto=True, margin=20)
     
     if font_family == "Japanese":
-        pdf.add_font("Japanese", "", font_path, uni=True)
-        pdf.add_font("Japanese", "B", font_path, uni=True)
+        pdf.add_font("Japanese", "", font_path)
+        pdf.add_font("Japanese", "B", font_path)
 
     pdf.add_page()
 

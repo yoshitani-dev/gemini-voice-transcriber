@@ -34,13 +34,10 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 # audio_transcriber.py から機能をインポート
 from audio_transcriber import (
     AudioRecorder,
-    compress_audio_for_upload,
     transcribe_with_gemini,
     generate_title_from_text,
     generate_minutes_from_text,
     create_pdf,
-    find_japanese_font,
-    remove_fillers,
     GEMINI_MODEL,
     OUTPUT_DIR,
     API_KEY,

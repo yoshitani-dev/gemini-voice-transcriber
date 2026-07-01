@@ -37,6 +37,7 @@ from audio_transcriber import (
     compress_audio_for_upload,
     transcribe_with_gemini,
     generate_title_from_text,
+    generate_minutes_from_text,
     create_pdf,
     find_japanese_font,
     remove_fillers,
@@ -270,6 +271,11 @@ def _process_audio(audio_filepath, audio_filename, timestamp):
             state.status = "idle"
             return
 
+        # ========== 議事録生成 ==========
+        state.step = 4
+        state.message = "AIが議事録を生成中..."
+        minutes_text = generate_minutes_from_text(full_text, api_key)
+
         # ========== タイトル生成 ==========
         state.message = "AIがタイトルを自動生成中..."
         title_name = generate_title_from_text(full_text, api_key)
@@ -277,18 +283,19 @@ def _process_audio(audio_filepath, audio_filename, timestamp):
         if not title_name:
             title_name = "文字起こし結果"
 
-        # ========== Step 4: PDF生成 ==========
-        state.step = 4
+        # ========== Step 5: PDF生成 ==========
+        state.step = 5
         state.message = "PDFを生成中..."
 
         pdf_filename = f"{title_name}_{timestamp}.pdf"
         pdf_filepath = os.path.join(OUTPUT_DIR, pdf_filename)
-        create_pdf(full_text, "", pdf_filepath, audio_filename=audio_filename)
+        create_pdf(full_text, "", pdf_filepath, audio_filename=audio_filename, minutes_text=minutes_text)
 
         # 結果を保存
         state.result = {
             "success": True,
             "title": title_name,
+            "minutes_text": minutes_text,
             "full_text": full_text,
             "pdf_filename": pdf_filename,
         }

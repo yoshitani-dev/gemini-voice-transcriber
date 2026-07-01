@@ -750,6 +750,10 @@
           <span class="step-label" data-i18n="step-transcribe">AI文字起こし</span>
         </div>
         <div id="step-3" class="progress-step" data-step="3">
+          <div class="step-circle"><span class="step-icon">💡</span></div>
+          <span class="step-label" data-i18n="step-minutes">AI議事録</span>
+        </div>
+        <div id="step-4" class="progress-step" data-step="4">
           <div class="step-circle"><span class="step-icon">📄</span></div>
           <span class="step-label" data-i18n="step-pdf">PDF生成</span>
         </div>
@@ -777,6 +781,18 @@
         </a>
       </div>
       <div class="accordion">
+        <div id="accordion-minutes" class="accordion-item">
+          <button id="accordion-minutes-header" class="accordion-header" type="button" aria-expanded="false">
+            <span class="accordion-header-left">
+              <span>💡</span>
+              <span data-i18n="minutes-header">議事録 (要約)</span>
+            </span>
+            <span class="accordion-chevron">▼</span>
+          </button>
+          <div class="accordion-body">
+            <div id="accordion-minutes-content" class="accordion-content"></div>
+          </div>
+        </div>
         <div id="accordion-fulltext" class="accordion-item">
           <button id="accordion-fulltext-header" class="accordion-header" type="button" aria-expanded="false">
             <span class="accordion-header-left">
@@ -840,10 +856,12 @@
         'step-upload': 'アップロード',
         'step-compress': '圧縮',
         'step-transcribe': 'AI文字起こし',
+        'step-minutes': 'AI議事録',
         'step-pdf': 'PDF生成',
         'progress-start': '処理を開始しています...',
         'result-title': '文字起こし完了！',
         'download-btn': 'PDFをダウンロード',
+        'minutes-header': '議事録 (要約)',
         'fulltext-header': '全文テキスト',
         'timestamped-header': 'タイムスタンプ付き',
         'no-text': '（テキストなし）',
@@ -874,11 +892,13 @@
         'card-processing': 'Processing...',
         'step-upload': 'Upload',
         'step-compress': 'Compress',
-        'step-transcribe': 'Transcription',
-        'step-pdf': 'PDF Gen',
-        'progress-start': 'Initializing process...',
+        'step-transcribe': 'AI Transcribe',
+        'step-minutes': 'AI Minutes',
+        'step-pdf': 'PDF Generation',
+        'progress-start': 'Starting process...',
         'result-title': 'Transcription Completed!',
         'download-btn': 'Download PDF',
+        'minutes-header': 'Minutes (Summary)',
         'fulltext-header': 'Full Text',
         'timestamped-header': 'With Timestamps',
         'no-text': '(No text)',
@@ -957,8 +977,9 @@
       resultArea: document.getElementById('result-area'),
       resultPdfFilename: document.getElementById('result-pdf-filename'),
       downloadButton: document.getElementById('download-button'),
-      fulltextContent: document.getElementById('accordion-fulltext-content'),
-      timestampedContent: document.getElementById('accordion-timestamped-content'),
+      accordionFulltextContent: document.getElementById('accordion-fulltext-content'),
+      accordionMinutesContent: document.getElementById('accordion-minutes-content'),
+      accordionTimestampedHeader: document.getElementById('accordion-timestamped-header'),
       errorToast: document.getElementById('error-toast'),
     };
 
@@ -1165,13 +1186,13 @@
     }
 
     function updateProgressSteps(currentStep) {
-      const linePercentages = [0, 33, 66, 100];
-      dom.progressLineFill.style.width = linePercentages[Math.min(currentStep, 3)] + '%';
+      const linePercentages = [0, 25, 50, 75, 100];
+      dom.progressLineFill.style.width = linePercentages[Math.min(currentStep, 4)] + '%';
 
       dom.steps.forEach((stepEl, index) => {
         stepEl.classList.remove('active', 'completed');
         const iconEl = stepEl.querySelector('.step-icon');
-        const icons = ['📤', '🔄', '🤖', '📄'];
+        const icons = ['📤', '🔄', '🤖', '💡', '📄'];
 
         if (index < currentStep) {
           stepEl.classList.add('completed');
@@ -1196,12 +1217,22 @@
 
           dom.resultPdfFilename.textContent = data.pdf_filename || 'output.pdf';
           dom.downloadButton.href = '/api/download/' + encodeURIComponent(data.pdf_filename || 'output.pdf');
-          dom.fulltextContent.textContent = data.full_text || t('no-text');
-          dom.timestampedContent.textContent = data.timestamped_text || t('no-timestamp');
+          
+          // Populate accordions
+          if (data.minutes_text) {
+            dom.accordionMinutesContent.textContent = data.minutes_text;
+          } else {
+            dom.accordionMinutesContent.textContent = '(議事録は生成されませんでした)';
+          }
+          if (data.full_text) {
+            dom.accordionFulltextContent.textContent = data.full_text;
+          } else {
+            dom.accordionFulltextContent.textContent = '(テキストなし)';
+          }
 
           // 文字起こし完了時に自動でダウンロードを実行
           dom.downloadButton.click();
-
+          
           // Show result area with animation
           setTimeout(() => {
             dom.resultArea.classList.add('visible');

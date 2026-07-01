@@ -28,7 +28,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 
 # audio_transcriber.py から機能をインポート
@@ -48,6 +48,7 @@ from audio_transcriber import (
 # アプリ設定
 # ============================================================
 
+PORT = 8000
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
@@ -55,6 +56,34 @@ app = FastAPI(title="Gemini Voice Transcriber")
 
 # 出力ディレクトリ作成
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# ============================================================
+# セキュリティ・ミドルウェア
+# ============================================================
+
+@app.middleware("http")
+async def csrf_protection(request: Request, call_next):
+    # APIのPOSTリクエストに対してCSRF対策を実施
+    if request.url.path.startswith("/api/") and request.method in ["POST", "PUT", "DELETE"]:
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
+        
+        # ローカルホストのアドレス一覧
+        allowed_origins = [f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"]
+        
+        # Origin ヘッダーのチェック
+        if origin and origin not in allowed_origins:
+            return JSONResponse({"error": "CSRF verification failed (Invalid Origin)"}, status_code=403)
+            
+        # Referer ヘッダーのチェック
+        if referer and not any(referer.startswith(a) for a in allowed_origins):
+            return JSONResponse({"error": "CSRF verification failed (Invalid Referer)"}, status_code=403)
+            
+        # OriginもRefererもない場合（ブラウザからのPOSTではないか、no-corsモードの攻撃）
+        if not origin and not referer:
+            return JSONResponse({"error": "CSRF verification failed (No Origin/Referer)"}, status_code=403)
+            
+    return await call_next(request)
 
 
 # ============================================================
@@ -316,7 +345,7 @@ if __name__ == "__main__":
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-    port = 8000
+    port = PORT
 
     # APIキーチェック
     api_key = os.environ.get("GEMINI_API_KEY", API_KEY).strip()

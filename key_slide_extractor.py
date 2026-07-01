@@ -185,10 +185,13 @@ class KeySlideExtractor:
             duration = float(probe.stdout.strip()) if probe.stdout.strip() else 0
             print(f"  動画の長さ: {duration:.1f} 秒")
 
+            # 録画開始直後のウィンドウ切り替え画面を避けるため、最初の10秒をスキップ
+            start_offset = 10
+            
             # フレーム抽出実行
             result = subprocess.run(
                 [
-                    "ffmpeg", "-i", video_path,
+                    "ffmpeg", "-ss", str(start_offset), "-i", video_path,
                     "-vf", f"fps=1/{self.frame_interval}",
                     "-q:v", "2",        # JPEG品質 (2=高品質)
                     "-y",
@@ -213,7 +216,7 @@ class KeySlideExtractor:
             [f for f in os.listdir(frames_dir) if f.startswith("frame_") and f.endswith(".jpg")]
         )
         for i, filename in enumerate(frame_files):
-            timestamp_sec = i * self.frame_interval
+            timestamp_sec = start_offset + i * self.frame_interval
             frames.append({
                 "path": os.path.join(frames_dir, filename),
                 "filename": filename,

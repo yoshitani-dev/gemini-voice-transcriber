@@ -39,7 +39,8 @@ jobs:
         run: |
           mkdir release_package
           copy dist\Gemini_CLI_Transcriber.exe release_package\
-          copy release_scripts\*.bat release_package\
+          copy run_transcriber.bat release_package\
+          copy run_screen_recorder.bat release_package\
           copy ffmpeg_extracted\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe release_package\
           copy ffmpeg_extracted\ffmpeg-master-latest-win64-gpl\bin\ffprobe.exe release_package\
           copy manual.pdf release_package\

@@ -148,13 +148,6 @@ pip install -r requirements.txt
 
 ### 🚀 使い方
 
-#### 1. ブラウザ画面（Web UI）から使う（推奨）
-Webサーバーを起動します：
-```powershell
-python web_server.py
-```
-起動後、ブラウザで `http://127.0.0.1:8000` を開きます。画面の「JP/EN」ボタンで言語が切り替わります。
-
 #### 1. コマンドライン（CUI）から使う
 - **PC音声を録音して文字起こし**:
   ```powershell

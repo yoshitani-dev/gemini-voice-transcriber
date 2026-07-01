@@ -104,10 +104,8 @@ A command prompt window will appear with the following message:
 
 If you already have audio/video files (mp3, wav, m4a, mp4, etc.):
 
-1. Drag and drop your audio or video file directly into the **dotted upload area** on the browser Web UI.
+1. Drag and drop your audio or video file directly onto the **`run_transcriber.bat`** icon in File Explorer.
 2. The transcription and PDF generation will start automatically.
-
-*(Alternatively, you can drag & drop the file directly onto the `run_transcriber.bat` icon in File Explorer.)*
 
 ---
 

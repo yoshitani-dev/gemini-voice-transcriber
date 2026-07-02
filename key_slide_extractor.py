@@ -172,19 +172,6 @@ class KeySlideExtractor:
 
         print(f"\n動画からフレームを抽出中... (間隔: {self.frame_interval}秒)")
         try:
-            # まず動画の長さを取得
-            probe = subprocess.run(
-                [
-                    "ffprobe", "-v", "error",
-                    "-show_entries", "format=duration",
-                    "-of", "csv=p=0",
-                    video_path,
-                ],
-                capture_output=True, text=True, timeout=30,
-            )
-            duration = float(probe.stdout.strip()) if probe.stdout.strip() else 0
-            print(f"  動画の長さ: {duration:.1f} 秒")
-
             # 録画開始直後のウィンドウ切り替え画面を避けるため、最初の10秒をスキップ
             start_offset = 10
             

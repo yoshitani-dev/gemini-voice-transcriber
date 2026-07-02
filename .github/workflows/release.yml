@@ -34,7 +34,7 @@ jobs:
 
       - name: Download FFmpeg
         run: |
-          Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -OutFile "ffmpeg.zip"
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
           Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg_extracted"
 
       - name: Prepare Release Archive
@@ -42,8 +42,7 @@ jobs:
           mkdir release_package
           copy dist\Gemini_CLI_Transcriber.exe release_package\
           copy Start_Transcriber.bat release_package\
-          copy ffmpeg_extracted\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe release_package\
-          copy ffmpeg_extracted\ffmpeg-master-latest-win64-gpl\bin\ffprobe.exe release_package\
+          copy ffmpeg_extracted\ffmpeg-*\bin\ffmpeg.exe release_package\
           copy manual.pdf release_package\
           copy manual_EN.pdf release_package\
           copy README.md release_package\
